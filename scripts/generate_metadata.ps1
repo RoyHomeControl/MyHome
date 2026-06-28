@@ -12,7 +12,7 @@ $sha256 = $hash.Hash.ToLower()
 # JSON 생성
 $metadata = @{
   version     = $Version
-  downloadUrl = "$DownloadBaseUrl/myhome.exe"
+  downloadUrl = "$DownloadBaseUrl/myhome.apk"
   sha256      = $sha256
 } | ConvertTo-Json -Depth 3
 

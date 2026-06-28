@@ -20,3 +20,11 @@ windows/flutter/generated_plugins.cmake
 *.log
 .DS_Store
 .metadata
+
+# 안드로이드
+android/local.properties
+android/.gradle/
+android/captures/
+android/generatedConfigs/
+*.keystore
+*.jks

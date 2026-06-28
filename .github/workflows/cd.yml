@@ -21,8 +21,8 @@ jobs:
       - name: Get dependencies
         run: flutter pub get
 
-      - name: Build Windows app
-        run: flutter build windows --release
+      - name: Build Android APK
+        run: flutter build apk --release
 
       - name: Ensure deploy directory exists
         run: |
@@ -31,17 +31,17 @@ jobs:
           }
         shell: powershell
 
-      - name: Copy binary to deploy path
+      - name: Copy apk to deploy path
         run: |
-          $src = "build\windows\x64\runner\Release\myhome.exe"
-          Copy-Item -Path $src -Destination "$env:DEPLOY_PATH\myhome.exe" -Force
+          $src = "build\app\outputs\apk/release\app-release.apk"
+          Copy-Item -Path $src -Destination "$env:DEPLOY_PATH\myhome.apk" -Force
         shell: powershell
 
       - name: Generate metadata JSON
         run: |
           .\scripts\generate_metadata.ps1 `
             -Version "$env:APP_VERSION" `
-            -BinaryPath "$env:DEPLOY_PATH\myhome.exe" `
+            -BinaryPath "$env:DEPLOY_PATH\myhome.apk" `
             -DownloadBaseUrl "$env:DOWNLOAD_BASE_URL" `
             -OutputPath "$env:DEPLOY_PATH\metadata.json"
         shell: powershell
