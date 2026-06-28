@@ -17,20 +17,31 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
+  
+      - name: Create Android platform
+        run: flutter create --platforms=android .
+        shell: powershell
+  
       - name: Patch AGP version
         run: |
-            $file = "android\settings.gradle.kts"
-            (Get-Content $file) -replace 'com.android.application" version "[^"]*"', 'com.android.application" version "8.2.1"' |
-            Set-Content $file
+              # settings.gradle.kts 패치
+              $settingsFile = "android\settings.gradle.kts"
+              $content = Get-Content $settingsFile -Raw
+              Write-Host "=== Before patch ==="
+              Write-Host $content
+              $content = $content -replace '(id\("com\.android\.application"\) version ")[^"]*(")', '${1}8.7.3${2}'
+              $content | Set-Content $settingsFile -NoNewline
+              Write-Host "=== After patch ==="
+              Get-Content $settingsFile
         shell: powershell
-
-
+  
       - name: Get dependencies
         run: flutter pub get
-
+        shell: powershell
+  
       - name: Build Android APK
         run: flutter build apk --release
+        shell: powershell
 
       - name: Ensure deploy directory exists
         run: |
