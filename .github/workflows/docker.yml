@@ -1,0 +1,50 @@
+name: Build APK in Docker
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+    build:
+        runs-on: self-hosted
+
+        env:
+            DEPLOY_PATH : "C:\\Users\\User\\Desktop\\MineCraft\\FileServer_For_Resourcepack\\files\\myhome"
+            APP_NAME : "myhome"
+        
+        steps:
+          - uses: actions/checkout@v4
+
+          - name: Ensure deploy directory exists
+            run: |
+              if (-not (Test-Path "$env:DEPLOY_PATH")) {
+                New-Item -ItemType Directory -Path "$env:DEPLOY_PATH" -Force
+              }
+            shell: powershell
+        
+          - name: Build Android APK inside Docker
+            run: |
+              docker run --rm `
+              -v "${{ github.workspace }}:/workspace" `
+              -v "$env:DEPLOY_PATH:/output" `
+              ghcr.io/roy752/flutter-builder:latest `
+              bash /workspace/scripts/build.sh
+            shell: powershell
+        
+          - name: Generate metadata
+            run: |
+              .\scripts\generate_metadata.ps1 `
+                -Version "$(Get-Date -Format yyyyMMddHHmm)" `
+                -BinaryPath "$env:DEPLOY_PATH\$env:APP_NAME.apk" `
+                -DownloadBaseUrl "http://100.108.137.1:11010/download"
+                -OutputPath "$env:DEPLOY_PATH\metadata.json"
+            shell: powershell
+
+          - name: Print result
+            run: |
+              Write-Host "=== Deployed Files ==="
+              Get-ChildItem "$env:DEPLOY_PATH"
+              Write-Host "=== metadata.json content ==="
+              Get-Content "$env:DEPLOY_PATH\metadata.json"
+            shell: powershell
