@@ -28,7 +28,7 @@ jobs:
               docker run --rm `
               -v "${{ github.workspace }}:/workspace" `
               -v "$env:DEPLOY_PATH:/output" `
-              ghcr.io/roy752/flutter-builder:latest `
+              ghcr.io/royhomecontrol/flutter-builder:latest `
               bash /workspace/scripts/build.sh
             shell: powershell
         
