@@ -37,9 +37,9 @@ class _CounterPageState extends State<CounterPage> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    //WidgetsBinding.instance.addPostFrameCallback((_) {
       _checkUpdate();
-    });
+    //});
   }
 
   Future<void> _checkUpdate() async {
