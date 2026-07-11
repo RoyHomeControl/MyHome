@@ -1,6 +1,6 @@
 name: myhome
 description: Remote control my home
-version: 1.0.1+5
+version: 1.0.2+5
 
 environment:
   sdk: ">=3.0.0 <4.0.0"
