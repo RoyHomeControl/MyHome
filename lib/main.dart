@@ -1,4 +1,11 @@
 import 'package:flutter/material.dart';
+import 'dart:io';
+
+import 'package:crypto/crypto.dart';
+import 'package:dio/dio.dart';
+import 'package:open_filex/open_filex.dart';
+import 'package:package_info_plus/package_info_plus.dart';
+import 'package:path_provider/path_provider.dart';
 
 void main() {
   runApp(const MyApp());
@@ -26,6 +33,68 @@ class CounterPage extends StatefulWidget {
 
 class _CounterPageState extends State<CounterPage> {
   int _count = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkUpdate();
+    });
+  }
+
+  Future<void> _checkUpdate() async {
+    final response = await Dio().get(
+      "http://100.108.137.1:11096/download/myhome/metadata.json",
+    );
+
+    final metadata = response.data;
+    final packageInfo = await PackageInfo.fromPlatform();
+
+    if (packageInfo.version == metadata["version"]) {
+      return;
+    }
+
+    if (!mounted) return;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => AlertDialog(
+        title: const Text("업데이트"),
+        content: const Text("새 버전이 있습니다."),
+        actions: [
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              await _downloadAndInstall(metadata);
+            },
+            child: const Text("확인"),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _downloadAndInstall(Map metadata) async {
+    final dir = await getTemporaryDirectory();
+
+    final file = "${dir.path}/myhome.apk";
+
+    await Dio().download(
+      metadata["downloadUrl"],
+      file,
+    );
+
+    final bytes = await File(file).readAsBytes();
+
+    final hash = sha256.convert(bytes).toString();
+
+    if (hash != metadata["sha256"]) {
+      throw Exception("SHA256 mismatch");
+    }
+
+    await OpenFilex.open(file);
+  }
 
   @override
   Widget build(BuildContext context) {
