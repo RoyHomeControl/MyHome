@@ -23,7 +23,7 @@ jobs:
               }
             shell: powershell
 
-          - name: Build Android APK inside Docker
+          - name: Build Android APK
             run: docker compose -f builder.compose.yaml run --rm flutter-builder
             shell: powershell
         
