@@ -51,10 +51,32 @@ class _CounterPageState extends State<CounterPage> {
     final packageInfo = await PackageInfo.fromPlatform();
 
     if (packageInfo.version == metadata["version"]) {
+      AlertDialog(
+        title: const Text("업데이트"),
+        content: const Text("최신 버전입니다."),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("확인"),
+          ),
+        ],
+      );
       return;
     }
 
-    if (!mounted) return;
+    if (!mounted) {
+      AlertDialog(
+        title: const Text("업데이트"),
+        content: const Text("업데이트를 확인할 수 없습니다."),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("확인"),
+          ),
+        ],
+      ); 
+      return;
+    }
 
     showDialog(
       context: context,
