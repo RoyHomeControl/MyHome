@@ -1,0 +1,15 @@
+services:
+  flutter-builder:
+    image: ghcr.io/royhomecontrol/flutter-builder:latest
+    container_name: flutter-builder
+    working_dir: /workspace
+    volumes:
+      - ./flutter-pub-cache:/root/.pub-cache
+      - ./gradle-cache:/root/.gradle
+      - .:/workspace
+    
+    command: bash /workspace/scripts/build.sh
+  
+  volumes:
+    flutter-pub-cache:
+    gradle-cache:

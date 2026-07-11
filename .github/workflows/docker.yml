@@ -24,12 +24,7 @@ jobs:
             shell: powershell
 
           - name: Build Android APK inside Docker
-            run: |
-              docker run --rm `
-              --mount type=bind,source="${{github.workspace}}",target=/workspace `
-              --mount type=bind,source="$env:DEPLOY_PATH",target=/output `
-              ghcr.io/royhomecontrol/flutter-builder:latest `
-              bash /workspace/scripts/build.sh
+            run: docker compose -f builder.compose.yaml run --rm flutter-builder
             shell: powershell
         
           - name: Generate metadata
