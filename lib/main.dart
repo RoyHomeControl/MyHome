@@ -101,7 +101,7 @@ class _CounterPageState extends State<CounterPage> {
     return Scaffold(
       appBar: AppBar(title: const Text('MyHome')),
       body: Center(
-        child: Text('$_count', style: const TextStyle(fontSize: 72)),
+        child: Text('$_count', style: const TextStyle(fontSize: 74)),
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => setState(() => _count++),
