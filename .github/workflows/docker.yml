@@ -29,7 +29,12 @@ jobs:
               -v "${{ github.workspace }}:/workspace" `
               -v "$env:DEPLOY_PATH:/output" `
               ghcr.io/royhomecontrol/flutter-builder:latest `
-              bash /workspace/scripts/build.sh
+              bash -c "
+              pwd
+              ls -al /
+              ls -al /workspace
+              ls -al /output
+              "
             shell: powershell
         
           - name: Generate metadata
