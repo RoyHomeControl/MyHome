@@ -37,64 +37,63 @@ class _CounterPageState extends State<CounterPage> {
   @override
   void initState() {
     super.initState();
-    //WidgetsBinding.instance.addPostFrameCallback((_) {
+
+    print("initState");
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      print("checkUpdate");
       _checkUpdate();
-    //});
+    });
   }
 
   Future<void> _checkUpdate() async {
-    final response = await Dio().get(
-      "http://100.108.137.1:11096/download/myhome/metadata.json",
-    );
-
-    final metadata = response.data;
-    final packageInfo = await PackageInfo.fromPlatform();
-
-    if (packageInfo.version == metadata["version"]) {
-      AlertDialog(
-        title: const Text("업데이트"),
-        content: const Text("최신 버전입니다."),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("확인"),
-          ),
-        ],
+    try {
+      final response = await Dio().get(
+        "http://100.108.137.1:11096/download/myhome/metadata.json",
       );
-      return;
-    }
 
-    if (!mounted) {
-      AlertDialog(
-        title: const Text("업데이트"),
-        content: const Text("업데이트를 확인할 수 없습니다."),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("확인"),
-          ),
-        ],
-      ); 
-      return;
-    }
+      final metadata = response.data;
+      final packageInfo = await PackageInfo.fromPlatform();
 
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => AlertDialog(
-        title: const Text("업데이트"),
-        content: const Text("새 버전이 있습니다."),
-        actions: [
-          TextButton(
-            onPressed: () async {
-              Navigator.pop(context);
-              await _downloadAndInstall(metadata);
-            },
-            child: const Text("확인"),
-          ),
-        ],
-      ),
-    );
+      if (packageInfo.version == metadata["version"]) {
+        await showDialog(
+          context: context,
+          builder: (_) => AlertDialog(
+            title: const Text("업데이트"),
+            content: const Text("최신 버전입니다."),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text("확인"),
+              ),
+            ],
+          )
+        );
+        return;
+      }
+
+      if (!mounted) return;
+
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => AlertDialog(
+          title: const Text("업데이트"),
+          content: const Text("새 버전이 있습니다."),
+          actions: [
+            TextButton(
+              onPressed: () async {
+                Navigator.pop(context);
+                await _downloadAndInstall(metadata);
+              },
+              child: const Text("확인"),
+            ),
+          ],
+        ),
+      );
+    } catch (e) {
+      print("Error checking update: $e");
+    }
   }
 
   Future<void> _downloadAndInstall(Map metadata) async {
