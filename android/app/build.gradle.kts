@@ -1,13 +1,11 @@
-import java.util.properties
-import java.io.FileInputStream
+import java.util.Properties
 
 val keystoreProperties = Properties()
+
 val keystorePropertiesFile = rootProject.file("key.properties")
 
 if (keystorePropertiesFile.exists()) {
-    FileInputStream(keystorePropertiesFile).use {
-        keystoreProperties.load(it)
-    }
+    keystoreProperties.load(keystorePropertiesFile.inputStream())
 }
 
 plugins {
@@ -37,12 +35,6 @@ android {
         versionName = flutter.versionName
     }
 
-    buildTypes {
-        release {
-            signingConfig = signingConfigs.getByName("release")
-        }
-    }
-
     signingConfigs {
         create("release") {
             keyAlias = keystoreProperties["keyAlias"] as String
@@ -51,6 +43,13 @@ android {
             storePassword = keystoreProperties["storePassword"] as String
         }
     }
+    
+    buildTypes {
+        release {
+            signingConfig = signingConfigs.getByName("release")
+        }
+    }
+
 }
 
 kotlin {
