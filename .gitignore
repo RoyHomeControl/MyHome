@@ -28,3 +28,8 @@ android/captures/
 android/generatedConfigs/
 *.keystore
 *.jks
+
+# 암호
+*.keystore
+*.jks
+android/key.properties

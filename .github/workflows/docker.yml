@@ -22,6 +22,21 @@ jobs:
                 New-Item -ItemType Directory -Path "$env:DEPLOY_PATH" -Force
               }
             shell: powershell
+          
+          - name: Create Signing files
+            shell: powershell
+            run: |
+              [IO.File]::WriteAllBytes(
+                "android/myhome-release.keystore",
+                [Convert]::FromBase64String("${{secrets.MYHOME_KEYSTORE}}")
+              )
+
+              @"
+              storeFile=myhome-release.keystore
+              storePassword=${{secrets.STORE_PASSWORD}}
+              keyPassword=${{secrets.KEY_PASSWORD}}
+              keyAlias=${{secrets.KEY_ALIAS}}
+              "@ | Out-File android/key.properties -Encoding utf8
 
           - name: Build Android APK
             run: docker compose -f builder.compose.yaml run --rm flutter-builder
