@@ -15,7 +15,7 @@ $version = (
 # JSON 생성
 $metadata = @{
   version     = $version
-  downloadUrl = "$DownloadBaseUrl/myhome.apk"
+  downloadUrl = "$DownloadBaseUrl/myhome/myhome.apk"
   sha256      = $hash.Hash.ToLower()
 } | ConvertTo-Json -Depth 3
 
