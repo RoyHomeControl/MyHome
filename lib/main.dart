@@ -34,6 +34,7 @@ class CounterPage extends StatefulWidget {
 
 class _CounterPageState extends State<CounterPage> {
   int _count = 0;
+  bool _testMode = false;
 
   @override
   void initState() {
@@ -123,7 +124,24 @@ class _CounterPageState extends State<CounterPage> {
     return Scaffold(
       appBar: AppBar(title: const Text('MyHome')),
       body: Center(
-        child: Text('$_count', style: const TextStyle(fontSize: 74)),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text('$_count', style: const TextStyle(fontSize: 74)),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: () => setState(() => _testMode = !_testMode),
+              child: Text(_testMode ? '테스트 기능 켜짐' : '테스트 기능 끔'),
+            ),
+            if (_testMode) ...[
+              const SizedBox(height: 8),
+              const Text(
+                '테스트 기능이 실행 중입니다.',
+                style: TextStyle(fontSize: 16),
+              ),
+            ],
+          ],
+        ),
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => setState(() => _count++),
