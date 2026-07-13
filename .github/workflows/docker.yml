@@ -32,7 +32,7 @@ jobs:
               )
 
               @"
-              storeFile=myhome-release.keystore
+              storeFile=../myhome-release.keystore
               storePassword=${{secrets.STORE_PASSWORD}}
               keyPassword=${{secrets.KEY_PASSWORD}}
               keyAlias=${{secrets.KEY_ALIAS}}
