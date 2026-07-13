@@ -54,12 +54,12 @@ jobs:
               Get-Content android/key.properties
 
           - name: Build Android APK
-            run: docker compose -f builder.compose.yaml run --rm flutter-builder bash -c "
-                pwd
-                ls -al /workspace/android
-                echo =====
-                cat /workspace/android/key.properties
-            "
+            run:     docker compose -f builder.compose.yaml run --rm flutter-builder bash -c "
+                    pwd
+                    ls -al /workspace/android
+                    echo =====
+                    cat /workspace/android/key.properties
+                  "
             shell: powershell
         
           - name: Generate metadata
