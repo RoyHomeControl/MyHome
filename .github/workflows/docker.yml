@@ -27,7 +27,7 @@ jobs:
             shell: powershell
             run: |
               [IO.File]::WriteAllBytes(
-                "$workspace\android\myhome-release.keystore",
+                "android/myhome-release.keystore",
                 [Convert]::FromBase64String("${{secrets.MYHOME_KEYSTORE}}")
               )
 
@@ -36,25 +36,30 @@ jobs:
               storePassword=${{secrets.STORE_PASSWORD}}
               keyPassword=${{secrets.KEY_PASSWORD}}
               keyAlias=${{secrets.KEY_ALIAS}}
-              "@ | Out-File "$workspace\android\key.properties" -Encoding utf8
+              "@ | Out-File android/key.properties -Encoding utf8
 
-              if (-not (Test-Path "$workspace\android\myhome-release.keystore")) {
+              if (-not (Test-Path "android/myhome-release.keystore")) {
                 Write-Host "Keystore file not found!"
                 exit 1
               }
-              if (-not (Test-Path "$workspace\android\key.properties")) {
+              if (-not (Test-Path "android/key.properties")) {
                 Write-Host "Key properties file not found!"
                 exit 1
               }
-
+                
           - name: Debug key.properties
             shell: powershell
             run: |
               Write-Host "===== key.properties ====="
-              Get-Content "$workspace\android\key.properties"
+              Get-Content android/key.properties
 
           - name: Build Android APK
-            run: docker compose -f builder.compose.yaml run --rm flutter-builder
+            run: docker compose -f builder.compose.yaml run --rm flutter-builder bash -c "
+                pwd
+                ls -al /workspace/android
+                echo =====
+                cat /workspace/android/key.properties
+            "
             shell: powershell
         
           - name: Generate metadata
