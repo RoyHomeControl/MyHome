@@ -46,21 +46,6 @@ jobs:
                 Write-Host "Key properties file not found!"
                 exit 1
               }
-              
-          - name: Debug container
-            shell: powershell
-            run: |
-              docker compose -f builder.compose.yaml run --rm flutter-builder ls -al /workspace/android
-
-          - name: Debug key.properties
-            shell: powershell
-            run: |
-              docker compose -f builder.compose.yaml run --rm flutter-builder cat /workspace/android/key.properties
-          
-          - name: Debug pwd
-            shell: powershell
-            run: |
-              docker compose -f builder.compose.yaml run --rm flutter-builder pwd
 
           - name: Build Android APK
             run:     docker compose -f builder.compose.yaml run --rm flutter-builder
