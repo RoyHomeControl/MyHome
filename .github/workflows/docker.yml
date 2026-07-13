@@ -38,6 +38,16 @@ jobs:
               keyAlias=${{secrets.KEY_ALIAS}}
               "@ | Out-File android/key.properties -Encoding utf8
 
+              :: android/myhome-release.keystore, android/key.properties가 생성되었는지 확인
+              if (-not (Test-Path "android/myhome-release.keystore")) {
+                Write-Host "Keystore file not found!"
+                exit 1
+              }
+              if (-not (Test-Path "android/key.properties")) {
+                Write-Host "Key properties file not found!"
+                exit 1
+              }
+
           - name: Build Android APK
             run: docker compose -f builder.compose.yaml run --rm flutter-builder
             shell: powershell
