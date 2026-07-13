@@ -36,7 +36,7 @@ jobs:
               storePassword=${{secrets.STORE_PASSWORD}}
               keyPassword=${{secrets.KEY_PASSWORD}}
               keyAlias=${{secrets.KEY_ALIAS}}
-              "@ | Out-File android/key.properties -Encoding utf8
+              "@ | Out-File android/key.properties -Encoding ascii
 
               if (-not (Test-Path "android/myhome-release.keystore")) {
                 Write-Host "Keystore file not found!"
