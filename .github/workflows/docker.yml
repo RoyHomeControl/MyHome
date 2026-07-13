@@ -47,6 +47,12 @@ jobs:
                 exit 1
               }
 
+          - name: Debug key.properties
+            shell: powershell
+            run: |
+              Write-Host "===== key.properties ====="
+              Get-Content android/key.properties
+
           - name: Build Android APK
             run: docker compose -f builder.compose.yaml run --rm flutter-builder
             shell: powershell
