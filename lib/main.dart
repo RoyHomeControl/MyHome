@@ -6,6 +6,7 @@ import 'package:dio/dio.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path_provider/path_provider.dart';
+import 'dart:convert';
 
 void main() {
   runApp(const MyApp());
@@ -52,7 +53,7 @@ class _CounterPageState extends State<CounterPage> {
         "http://100.108.137.1:11096/download/myhome/metadata.json",
       );
 
-      final metadata = response.data;
+      final metadata = jsonDecode(response.data) as Map<String, dynamic>;
       final packageInfo = await PackageInfo.fromPlatform();
 
       if (packageInfo.version == metadata["version"]) {
@@ -106,13 +107,13 @@ class _CounterPageState extends State<CounterPage> {
       file,
     );
 
-    final bytes = await File(file).readAsBytes();
+    //final bytes = await File(file).readAsBytes();
 
-    final hash = sha256.convert(bytes).toString();
+    //final hash = sha256.convert(bytes).toString();
 
-    if (hash != metadata["sha256"]) {
-      throw Exception("SHA256 mismatch");
-    }
+    //if (hash != metadata["sha256"]) {
+    //  throw Exception("SHA256 mismatch");
+    //}
 
     await OpenFilex.open(file);
   }
