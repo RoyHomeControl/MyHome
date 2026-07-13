@@ -98,9 +98,9 @@ class _CounterPageState extends State<CounterPage> {
   }
 
   Future<void> _downloadAndInstall(Map metadata) async {
-    final dir = await getTemporaryDirectory();
+    final dir = await getExternalStorageDirectory();
 
-    final file = "${dir.path}/myhome.apk";
+    final file = "${dir!.path}/myhome.apk";
 
     await Dio().download(
       metadata["downloadUrl"],
