@@ -182,7 +182,7 @@ class _CounterPageState extends State<CounterPage> with WidgetsBindingObserver {
             TextButton(
               onPressed: () async {
                 Navigator.pop(context);
-                await _downloadAndInstall(metadata);
+                await _startDownloadWithDialog(metadata);
               },
               child: const Text("확인"),
             ),
@@ -268,7 +268,7 @@ class _CounterPageState extends State<CounterPage> with WidgetsBindingObserver {
     }
   }
 
-  Future<String> _downloadFile(String pathOrUrl) async {
+  Future<String> _downloadFile(String pathOrUrl, {ProgressCallback? onReceiveProgress}) async {
     // Prefer public Downloads directory so installer can access the APK
     String? downloadPath;
     try {
@@ -294,9 +294,95 @@ class _CounterPageState extends State<CounterPage> with WidgetsBindingObserver {
     // Ensure directory exists
     if (!await dir.exists()) await dir.create(recursive: true);
 
-    await Dio().download(url, target);
+    await Dio().download(url, target, onReceiveProgress: onReceiveProgress);
 
     return target;
+  }
+
+  Future<void> _startDownloadWithDialog(Map metadata) async {
+    bool started = false;
+    int received = 0;
+    int total = 0;
+
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        return StatefulBuilder(builder: (dialogContext, setState) {
+          if (!started) {
+            started = true;
+            // start download
+            final url = metadata["downloadUrl"] as String;
+            _downloadFile(url, onReceiveProgress: (count, len) {
+              setState(() {
+                received = count;
+                total = len;
+              });
+            }).then((target) async {
+              // close progress dialog
+              if (Navigator.of(dialogContext).canPop()) Navigator.of(dialogContext).pop();
+              // notify user and open installer
+              if (!mounted) return;
+              await showDialog(
+                context: context,
+                builder: (_) => AlertDialog(
+                  title: const Text("다운로드 완료"),
+                  content: const Text("다운로드가 완료되었습니다. 설치 화면을 엽니다."),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text("확인"),
+                    ),
+                  ],
+                ),
+              );
+              await OpenFilex.open(target);
+            }).catchError((e) async {
+              if (Navigator.of(dialogContext).canPop()) Navigator.of(dialogContext).pop();
+              if (!mounted) return;
+              await showDialog(
+                context: context,
+                builder: (_) => AlertDialog(
+                  title: const Text("다운로드 실패"),
+                  content: Text(e.toString()),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text("확인"),
+                    ),
+                  ],
+                ),
+              );
+            });
+          }
+
+          double progress = total > 0 ? received / total : 0.0;
+          String progressText = total > 0
+              ? '${(progress * 100).toStringAsFixed(0)}% (${(received / 1024).toStringAsFixed(0)}KB / ${(total / 1024).toStringAsFixed(0)}KB)'
+              : '연결중...';
+
+          return AlertDialog(
+            title: const Text('다운로드 중'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                LinearProgressIndicator(value: total > 0 ? progress : null),
+                const SizedBox(height: 12),
+                Text(progressText),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  // don't allow cancel for now
+                },
+                child: const Text('취소'),
+              ),
+            ],
+          );
+        });
+      },
+    );
   }
 
   @override
