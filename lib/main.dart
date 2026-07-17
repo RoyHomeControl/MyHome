@@ -23,6 +23,50 @@ class MyApp extends StatelessWidget {
       home: const CounterPage(),
     );
   }
+}
+
+class CounterPage extends StatefulWidget {
+  const CounterPage({super.key});
+
+  @override
+  State<CounterPage> createState() => _CounterPageState();
+}
+
+class _CounterPageState extends State<CounterPage> with WidgetsBindingObserver {
+  int _count = 0;
+  bool _testMode = false;
+
+  @override
+  void initState() {
+    super.initState();
+
+    print("initState");
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _onFirstFrame();
+    });
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    if (state == AppLifecycleState.resumed) {
+      // When returning to the app, re-check server and updates
+      _onResume();
+    }
+  }
+
+  Future<void> _onResume() async {
+    final ok = await _checkServerStatus();
+    if (ok) await _checkUpdate();
+  }
 
   Future<void> _onFirstFrame() async {
     print("checking server status");
@@ -106,29 +150,6 @@ class MyApp extends StatelessWidget {
       return false;
     }
   }
-}
-
-class CounterPage extends StatefulWidget {
-  const CounterPage({super.key});
-
-  @override
-  State<CounterPage> createState() => _CounterPageState();
-}
-
-class _CounterPageState extends State<CounterPage> {
-  int _count = 0;
-  bool _testMode = false;
-
-  @override
-  void initState() {
-    super.initState();
-
-    print("initState");
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _onFirstFrame();
-    });
-  }
 
   Future<void> _checkUpdate() async {
     try {
@@ -144,19 +165,7 @@ class _CounterPageState extends State<CounterPage> {
       final packageInfo = await PackageInfo.fromPlatform();
 
       if (packageInfo.version == metadata["version"]) {
-        await showDialog(
-          context: context,
-          builder: (_) => AlertDialog(
-            title: const Text("업데이트"),
-            content: const Text("최신 버전입니다."),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text("확인"),
-              ),
-            ],
-          )
-        );
+        // already latest - no popup
         return;
       }
 
