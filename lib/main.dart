@@ -5,6 +5,7 @@ import 'package:open_filex/open_filex.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path_provider/path_provider.dart';
 import 'dart:convert';
+import 'dart:io';
 
 const String DOWNLOAD_BASE = "http://100.108.137.1:11096/download/myhome";
 
@@ -268,15 +269,32 @@ class _CounterPageState extends State<CounterPage> with WidgetsBindingObserver {
   }
 
   Future<String> _downloadFile(String pathOrUrl) async {
-    final dir = await getExternalStorageDirectory();
-    final target = "${dir!.path}/myhome.apk";
+    // Prefer public Downloads directory so installer can access the APK
+    String? downloadPath;
+    try {
+      final dirs = await getExternalStorageDirectories(type: StorageDirectory.downloads);
+      if (dirs != null && dirs.isNotEmpty) {
+        downloadPath = dirs.first.path;
+      }
+    } catch (_) {
+      downloadPath = null;
+    }
+
+    Directory dir;
+    if (downloadPath != null) {
+      dir = Directory(downloadPath);
+    } else {
+      dir = (await getExternalStorageDirectory())!;
+    }
+
+    final target = "${dir.path}${Platform.pathSeparator}myhome.apk";
 
     final url = pathOrUrl.startsWith('http') ? pathOrUrl : '$DOWNLOAD_BASE/$pathOrUrl';
 
-    await Dio().download(
-      url,
-      target,
-    );
+    // Ensure directory exists
+    if (!await dir.exists()) await dir.create(recursive: true);
+
+    await Dio().download(url, target);
 
     return target;
   }
