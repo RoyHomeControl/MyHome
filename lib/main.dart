@@ -33,7 +33,7 @@ class CounterPage extends StatefulWidget {
   State<CounterPage> createState() => _CounterPageState();
 }
 
-class _CounterPageState extends State<CounterPage> with WidgetsBindingObserver {
+class _CounterPageState extends State<CounterPage> {
   int _count = 0;
   bool _testMode = false;
 
@@ -46,27 +46,6 @@ class _CounterPageState extends State<CounterPage> with WidgetsBindingObserver {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _onFirstFrame();
     });
-    WidgetsBinding.instance.addObserver(this);
-  }
-
-  @override
-  void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
-    super.dispose();
-  }
-
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    super.didChangeAppLifecycleState(state);
-    if (state == AppLifecycleState.resumed) {
-      // When returning to the app, re-check server and updates
-      _onResume();
-    }
-  }
-
-  Future<void> _onResume() async {
-    final ok = await _checkServerStatus();
-    if (ok) await _checkUpdate();
   }
 
   Future<void> _onFirstFrame() async {
