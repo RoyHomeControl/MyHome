@@ -6,6 +6,8 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path_provider/path_provider.dart';
 import 'dart:convert';
 
+const String DOWNLOAD_BASE = "http://100.108.137.1:11096/download/myhome";
+
 void main() {
   runApp(const MyApp());
 }
@@ -20,6 +22,89 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(colorSchemeSeed: Colors.blue),
       home: const CounterPage(),
     );
+  }
+
+  Future<void> _onFirstFrame() async {
+    print("checking server status");
+    final ok = await _checkServerStatus();
+    if (ok) {
+      print("checkUpdate");
+      await _checkUpdate();
+    }
+  }
+
+  Future<bool> _checkServerStatus() async {
+    try {
+      final response = await Dio().get(
+        "http://100.108.137.1:11096",
+        options: Options(
+          sendTimeout: const Duration(seconds: 2),
+          receiveTimeout: const Duration(seconds: 2),
+        ),
+      );
+
+      final body = response.data;
+      if (body is String) {
+        try {
+          final decoded = jsonDecode(body) as Map<String, dynamic>;
+          if (decoded['status'] == 'ok') return true;
+        } catch (_) {
+          // not JSON or unexpected format
+        }
+      } else if (body is Map<String, dynamic>) {
+        if (body['status'] == 'ok') return true;
+      }
+
+      if (!mounted) return false;
+      await showDialog(
+        context: context,
+        builder: (_) => AlertDialog(
+          title: const Text("서버 오류"),
+          content: const Text("서버 상태가 정상적이지 않습니다 (status != ok)."),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("확인"),
+            ),
+          ],
+        ),
+      );
+      return false;
+    } on DioException catch (e) {
+      if (!mounted) return false;
+      await showDialog(
+        context: context,
+        builder: (_) => AlertDialog(
+          title: const Text("서버 연결 실패"),
+          content: Text(e.toString()),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("확인"),
+            ),
+          ],
+        ),
+      );
+      print("Server status check error: $e");
+      return false;
+    } catch (e) {
+      if (!mounted) return false;
+      await showDialog(
+        context: context,
+        builder: (_) => AlertDialog(
+          title: const Text("서버 오류"),
+          content: Text(e.toString()),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("확인"),
+            ),
+          ],
+        ),
+      );
+      print("Server status check error: $e");
+      return false;
+    }
   }
 }
 
@@ -41,15 +126,14 @@ class _CounterPageState extends State<CounterPage> {
     print("initState");
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      print("checkUpdate");
-      _checkUpdate();
+      _onFirstFrame();
     });
   }
 
   Future<void> _checkUpdate() async {
     try {
       final response = await Dio().get(
-        "http://100.108.137.1:11096/download/myhome/metadata.json",
+        "$DOWNLOAD_BASE/metadata.json",
         options: Options(
           sendTimeout: const Duration(seconds: 2),
           receiveTimeout: const Duration(seconds: 2),
@@ -153,23 +237,7 @@ class _CounterPageState extends State<CounterPage> {
 
   Future<void> _downloadAndInstall(Map metadata) async {
     try {
-      final dir = await getExternalStorageDirectory();
-
-      final file = "${dir!.path}/myhome.apk";
-
-      await Dio().download(
-        metadata["downloadUrl"],
-        file,
-      );
-
-      //final bytes = await File(file).readAsBytes();
-
-      //final hash = sha256.convert(bytes).toString();
-
-      //if (hash != metadata["sha256"]) {
-      //  throw Exception("SHA256 mismatch");
-      //}
-
+      final file = await _downloadFile(metadata["downloadUrl"] as String);
       await OpenFilex.open(file);
     } catch (e) {
       if (!mounted) return;
@@ -188,6 +256,20 @@ class _CounterPageState extends State<CounterPage> {
       );
       print("Error downloading/installing: $e");
     }
+  }
+
+  Future<String> _downloadFile(String pathOrUrl) async {
+    final dir = await getExternalStorageDirectory();
+    final target = "${dir!.path}/myhome.apk";
+
+    final url = pathOrUrl.startsWith('http') ? pathOrUrl : '$DOWNLOAD_BASE/$pathOrUrl';
+
+    await Dio().download(
+      url,
+      target,
+    );
+
+    return target;
   }
 
   @override
