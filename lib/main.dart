@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
-import 'dart:io';
 
-import 'package:crypto/crypto.dart';
 import 'package:dio/dio.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:package_info_plus/package_info_plus.dart';
@@ -52,6 +50,10 @@ class _CounterPageState extends State<CounterPage> {
     try {
       final response = await Dio().get(
         "http://100.108.137.1:11096/download/myhome/metadata.json",
+        options: Options(
+          sendTimeout: const Duration(seconds: 2),
+          receiveTimeout: const Duration(seconds: 2),
+        ),
       );
 
       final metadata = jsonDecode(response.data) as Map<String, dynamic>;
@@ -93,30 +95,99 @@ class _CounterPageState extends State<CounterPage> {
           ],
         ),
       );
+    } on DioException catch (e) {
+      if (e.type == DioExceptionType.sendTimeout ||
+          e.type == DioExceptionType.receiveTimeout ||
+          e.type == DioExceptionType.connectionTimeout) {
+        if (!mounted) return;
+
+        await showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (_) => AlertDialog(
+            title: const Text("업데이트 불가"),
+            content: const Text("업데이트 불가능. 연결 설정 또는 서버 상태를 확인해주세요."),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text("확인"),
+              ),
+            ],
+          ),
+        );
+        return;
+      }
+      if (!mounted) return;
+      await showDialog(
+        context: context,
+        builder: (_) => AlertDialog(
+          title: const Text("업데이트 오류"),
+          content: Text(e.toString()),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("확인"),
+            ),
+          ],
+        ),
+      );
+      print("Error checking update: $e");
     } catch (e) {
+      if (!mounted) return;
+      await showDialog(
+        context: context,
+        builder: (_) => AlertDialog(
+          title: const Text("업데이트 오류"),
+          content: Text(e.toString()),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("확인"),
+            ),
+          ],
+        ),
+      );
       print("Error checking update: $e");
     }
   }
 
   Future<void> _downloadAndInstall(Map metadata) async {
-    final dir = await getExternalStorageDirectory();
+    try {
+      final dir = await getExternalStorageDirectory();
 
-    final file = "${dir!.path}/myhome.apk";
+      final file = "${dir!.path}/myhome.apk";
 
-    await Dio().download(
-      metadata["downloadUrl"],
-      file,
-    );
+      await Dio().download(
+        metadata["downloadUrl"],
+        file,
+      );
 
-    //final bytes = await File(file).readAsBytes();
+      //final bytes = await File(file).readAsBytes();
 
-    //final hash = sha256.convert(bytes).toString();
+      //final hash = sha256.convert(bytes).toString();
 
-    //if (hash != metadata["sha256"]) {
-    //  throw Exception("SHA256 mismatch");
-    //}
+      //if (hash != metadata["sha256"]) {
+      //  throw Exception("SHA256 mismatch");
+      //}
 
-    await OpenFilex.open(file);
+      await OpenFilex.open(file);
+    } catch (e) {
+      if (!mounted) return;
+      await showDialog(
+        context: context,
+        builder: (_) => AlertDialog(
+          title: const Text("다운로드/설치 오류"),
+          content: Text(e.toString()),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("확인"),
+            ),
+          ],
+        ),
+      );
+      print("Error downloading/installing: $e");
+    }
   }
 
   @override
