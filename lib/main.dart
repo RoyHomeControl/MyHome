@@ -224,29 +224,6 @@ class _CounterPageState extends State<CounterPage> {
     }
   }
 
-  Future<void> _downloadAndInstall(Map metadata) async {
-    try {
-      final file = await _downloadFile(metadata["downloadUrl"] as String);
-      await OpenFilex.open(file);
-    } catch (e) {
-      if (!mounted) return;
-      await showDialog(
-        context: context,
-        builder: (_) => AlertDialog(
-          title: const Text("다운로드/설치 오류"),
-          content: Text(e.toString()),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text("확인"),
-            ),
-          ],
-        ),
-      );
-      print("Error downloading/installing: $e");
-    }
-  }
-
   Future<String> _downloadFile(String pathOrUrl, {ProgressCallback? onReceiveProgress}) async {
     // Prefer public Downloads directory so installer can access the APK
     String? downloadPath;
