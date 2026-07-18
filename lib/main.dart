@@ -225,7 +225,7 @@ class _CounterPageState extends State<CounterPage> {
 
   Future<String> _downloadFile(String pathOrUrl, {ProgressCallback? onReceiveProgress}) async {
     final downloadDir = await getExternalStorageDirectory();
-    final target = "${downloadDir.path}/myhome.apk";
+    final target = "${downloadDir!.path}/myhome.apk";
 
     final url = pathOrUrl.startsWith('http') ? pathOrUrl : '$DOWNLOAD_BASE/$pathOrUrl';
 
