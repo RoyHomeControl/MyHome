@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'package:dio/dio.dart';
-import 'package:downloadsfolder/downloadsfolder.dart' as downloader;
+import 'package:path_provider/path_provider.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:flutter_app_installer/flutter_app_installer.dart';
 import 'dart:convert';
@@ -224,8 +224,7 @@ class _CounterPageState extends State<CounterPage> {
   }
 
   Future<String> _downloadFile(String pathOrUrl, {ProgressCallback? onReceiveProgress}) async {
-    // Prefer public Downloads directory so installer can access the APK
-    final downloadDir = await downloader.getDownloadDirectory();
+    final downloadDir = await getExternalStorageDirectory();
     final target = "${downloadDir.path}/myhome.apk";
 
     final url = pathOrUrl.startsWith('http') ? pathOrUrl : '$DOWNLOAD_BASE/$pathOrUrl';
