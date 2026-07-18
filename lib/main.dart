@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
 
 import 'package:dio/dio.dart';
-import 'package:open_filex/open_filex.dart';
+import 'package:downloadsfolder/downloadsfolder.dart' as downloader;
 import 'package:package_info_plus/package_info_plus.dart';
-import 'package:path_provider/path_provider.dart';
+import 'package:flutter_app_installer/flutter_app_installer.dart';
 import 'dart:convert';
-import 'dart:io';
 
 const String DOWNLOAD_BASE = "http://100.108.137.1:11096/download/myhome";
 
@@ -226,29 +225,10 @@ class _CounterPageState extends State<CounterPage> {
 
   Future<String> _downloadFile(String pathOrUrl, {ProgressCallback? onReceiveProgress}) async {
     // Prefer public Downloads directory so installer can access the APK
-    String? downloadPath;
-    try {
-      final dirs = await getExternalStorageDirectories(type: StorageDirectory.downloads);
-      if (dirs != null && dirs.isNotEmpty) {
-        downloadPath = dirs.first.path;
-      }
-    } catch (_) {
-      downloadPath = null;
-    }
-
-    Directory dir;
-    if (downloadPath != null) {
-      dir = Directory(downloadPath);
-    } else {
-      dir = (await getExternalStorageDirectory())!;
-    }
-
-    final target = "${dir.path}${Platform.pathSeparator}myhome.apk";
+    final downloadDir = await downloader.getDownloadDirectory();
+    final target = "${downloadDir.path}/myhome.apk";
 
     final url = pathOrUrl.startsWith('http') ? pathOrUrl : '$DOWNLOAD_BASE/$pathOrUrl';
-
-    // Ensure directory exists
-    if (!await dir.exists()) await dir.create(recursive: true);
 
     await Dio().download(url, target, onReceiveProgress: onReceiveProgress);
 
@@ -292,7 +272,8 @@ class _CounterPageState extends State<CounterPage> {
                   ],
                 ),
               );
-              await OpenFilex.open(target);
+              final installer = FlutterAppInstaller();
+              await installer.installApk(filePath: target);
             }).catchError((e) async {
               if (Navigator.of(dialogContext).canPop()) Navigator.of(dialogContext).pop();
               if (!mounted) return;
