@@ -39,6 +39,14 @@ ENV PATH="$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$P
 RUN yes | sdkmanager --licenses || true && \
     sdkmanager "platform-tools" \
                "platforms;android-34" \
-               "build-tools;34.0.0"
+               "platforms;android-35" \
+               "platforms;android-36" \
+               "build-tools;34.0.0" \
+               "build-tools;36.0.0" \
+               "cmake;3.22.1" \
+               "ndk;28.2.13676358"
 
 WORKDIR /workspace
+
+RUN flutter doctor
+RUN flutter precache

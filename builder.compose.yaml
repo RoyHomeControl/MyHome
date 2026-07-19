@@ -6,6 +6,8 @@ services:
       - .:/workspace
       - flutter-pub-cache:/root/.pub-cache
       - gradle-cache:/root/.gradle
+      - android-sdk:/android-sdk
+      - flutter-cache:/flutter/bin/cache
       - ${DEPLOY_PATH}:/output
     
     command: bash /workspace/scripts/build.sh
@@ -13,3 +15,5 @@ services:
 volumes:
   flutter-pub-cache:
   gradle-cache:
+  android-sdk:
+  flutter-cache:

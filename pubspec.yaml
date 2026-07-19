@@ -1,6 +1,6 @@
 name: myhome
 description: Remote control my home
-version: 1.0.1+2
+version: 1.0.0+1
 
 environment:
   sdk: ">=3.0.0 <4.0.0"
@@ -8,9 +8,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  
   dio: ^5.9.0
-  package_info_plus: ^8.3.1
   crypto: ^3.0.6
   path_provider: ^2.1.5
   downloadsfolder: ^1.2.0
