@@ -26,8 +26,7 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   final _updateService = UpdateService();
-  int _count = 0;
-  bool _testMode = false;
+  final List<String> _notes = [];
 
   @override
   void initState() {
@@ -37,46 +36,144 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
-  void _increment() => setState(() => _count++);
-  void _toggleTest() => setState(() => _testMode = !_testMode);
-  void _reset() => setState(() {
-        _count = 0;
-        _testMode = false;
+  Future<void> _addNote() async {
+    final note = await Navigator.of(context).push<String>(
+      MaterialPageRoute(builder: (_) => const AddNotePage()),
+    );
+    if (note != null && note.trim().isNotEmpty) {
+      setState(() {
+        _notes.insert(0, note.trim());
       });
+    }
+  }
+
+  void _removeNoteAt(int index) {
+    final removed = _notes[index];
+    setState(() {
+      _notes.removeAt(index);
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('메모가 삭제되었습니다.')),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('MyHome')),
-      body: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text('$_count', style: const TextStyle(fontSize: 74)),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: _toggleTest,
-              child: Text(_testMode ? '테스트 모드 켜짐' : '테스트 모드 끔'),
-            ),
-            const SizedBox(height: 8),
-            ElevatedButton(
-              onPressed: _reset,
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.grey[700]),
-              child: const Text('리셋'),
-            ),
-            if (_testMode) ...[
-              const SizedBox(height: 12),
-              const Text('테스트 기능이 실행 중입니다.'),
-            ],
-          ],
-        ),
+      body: Padding(
+        padding: const EdgeInsets.all(12),
+        child: _notes.isEmpty
+            ? const Center(
+                child: Text(
+                  '메모가 없습니다. + 버튼을 눌러 메모를 추가하세요.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 18),
+                ),
+              )
+            : GridView.builder(
+                itemCount: _notes.length,
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2,
+                  crossAxisSpacing: 12,
+                  mainAxisSpacing: 12,
+                  childAspectRatio: 1,
+                ),
+                itemBuilder: (context, index) {
+                  return GestureDetector(
+                    onLongPress: () => _removeNoteAt(index),
+                    child: Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.yellow[200],
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.12),
+                            blurRadius: 8,
+                          ),
+                        ],
+                      ),
+                      child: Stack(
+                        children: [
+                          Text(
+                            _notes[index],
+                            style: const TextStyle(fontSize: 16),
+                          ),
+                          Positioned(
+                            right: 0,
+                            top: 0,
+                            child: IconButton(
+                              icon: const Icon(Icons.close, size: 20),
+                              onPressed: () => _removeNoteAt(index),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
       ),
-      floatingActionButton: GestureDetector(
-        onLongPress: _reset,
-        child: FloatingActionButton(
-          onPressed: _increment,
-          tooltip: '증가 / 길게 눌러 리셋',
-          child: const Icon(Icons.add),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _addNote,
+        tooltip: '메모 추가',
+        child: const Icon(Icons.add),
+      ),
+    );
+  }
+}
+
+class AddNotePage extends StatefulWidget {
+  const AddNotePage({super.key});
+
+  @override
+  State<AddNotePage> createState() => _AddNotePageState();
+}
+
+class _AddNotePageState extends State<AddNotePage> {
+  final TextEditingController _controller = TextEditingController();
+
+  void _saveNote() {
+    final text = _controller.text.trim();
+    if (text.isEmpty) return;
+    Navigator.of(context).pop(text);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('메모 추가')),
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Text(
+              '메모 내용을 입력하세요.',
+              style: TextStyle(fontSize: 18),
+            ),
+            const SizedBox(height: 12),
+            Expanded(
+              child: TextField(
+                controller: _controller,
+                maxLines: null,
+                expands: true,
+                textInputAction: TextInputAction.newline,
+                decoration: const InputDecoration(
+                  hintText: '여기에 입력',
+                  border: OutlineInputBorder(),
+                  fillColor: Colors.white,
+                  filled: true,
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            ElevatedButton(
+              onPressed: _saveNote,
+              child: const Text('저장'),
+            ),
+          ],
         ),
       ),
     );
