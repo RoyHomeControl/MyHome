@@ -1,16 +1,15 @@
-import 'package:flutter/material.dart';
+﻿import 'dart:convert';
 
 import 'package:dio/dio.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:package_info_plus/package_info_plus.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_app_installer/flutter_app_installer.dart';
-import 'dart:convert';
+import 'package:package_info_plus/package_info_plus.dart';
+import 'package:path_provider/path_provider.dart';
 
-const String DOWNLOAD_BASE = "http://100.108.137.1:11096/download/myhome";
+const serverUrl = 'http://100.108.137.1:11096';
+const downloadBase = 'http://100.108.137.1:11096/download/myhome';
 
-void main() {
-  runApp(const MyApp());
-}
+void main() => runApp(const MyApp());
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
@@ -20,301 +19,141 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'MyHome',
       theme: ThemeData(colorSchemeSeed: Colors.blue),
-      home: const CounterPage(),
+      home: const HomePage(),
     );
   }
 }
 
-class CounterPage extends StatefulWidget {
-  const CounterPage({super.key});
+class HomePage extends StatefulWidget {
+  const HomePage({super.key});
 
   @override
-  State<CounterPage> createState() => _CounterPageState();
+  State<HomePage> createState() => _HomePageState();
 }
 
-class _CounterPageState extends State<CounterPage> {
+class _HomePageState extends State<HomePage> {
+  final _dio = Dio(BaseOptions(
+    sendTimeout: const Duration(seconds: 2),
+    receiveTimeout: const Duration(seconds: 2),
+  ));
   int _count = 0;
   bool _testMode = false;
 
   @override
   void initState() {
     super.initState();
-
-    print("initState");
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _onFirstFrame();
-    });
+    WidgetsBinding.instance.addPostFrameCallback((_) => _init());
   }
 
-  Future<void> _onFirstFrame() async {
-    print("checking server status");
-    final ok = await _checkServerStatus();
-    if (ok) {
-      print("checkUpdate");
-      await _checkUpdate();
-    }
+  Future<void> _init() async {
+    if (await _checkServer()) await _checkUpdate();
   }
 
-  Future<bool> _checkServerStatus() async {
+  Future<void> _showAlert(String title, String message,
+      {List<Widget>? actions, bool barrierDismissible = true}) {
+    return showDialog(
+      context: context,
+      barrierDismissible: barrierDismissible,
+      builder: (_) => AlertDialog(
+        title: Text(title),
+        content: Text(message),
+        actions: actions ?? [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('확인'),
+          )
+        ],
+      ),
+    );
+  }
+
+  Future<bool> _checkServer() async {
     try {
-      final response = await Dio().get(
-        "http://100.108.137.1:11096",
-        options: Options(
-          sendTimeout: const Duration(seconds: 2),
-          receiveTimeout: const Duration(seconds: 2),
-        ),
-      );
-
-      final body = response.data;
-      if (body is String) {
-        try {
-          final decoded = jsonDecode(body) as Map<String, dynamic>;
-          if (decoded['status'] == 'ok') return true;
-        } catch (_) {
-          // not JSON or unexpected format
-        }
-      } else if (body is Map<String, dynamic>) {
-        if (body['status'] == 'ok') return true;
-      }
-
-      if (!mounted) return false;
-      await showDialog(
-        context: context,
-        builder: (_) => AlertDialog(
-          title: const Text("서버 오류"),
-          content: const Text("서버 상태가 정상적이지 않습니다 (status != ok)."),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text("확인"),
-            ),
-          ],
-        ),
-      );
-      return false;
-    } on DioException catch (e) {
-      if (!mounted) return false;
-      await showDialog(
-        context: context,
-        builder: (_) => AlertDialog(
-          title: const Text("서버 연결 실패"),
-          content: Text(e.toString()),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text("확인"),
-            ),
-          ],
-        ),
-      );
-      print("Server status check error: $e");
-      return false;
+      final response = await _dio.get(serverUrl);
+      final data = response.data;
+      final status = data is String
+          ? jsonDecode(data)['status']
+          : (data as Map<String, dynamic>)['status'];
+      if (status == 'ok') return true;
+      await _showAlert('서버 오류', '서버 상태가 정상적이지 않습니다.');
     } catch (e) {
       if (!mounted) return false;
-      await showDialog(
-        context: context,
-        builder: (_) => AlertDialog(
-          title: const Text("서버 오류"),
-          content: Text(e.toString()),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text("확인"),
-            ),
-          ],
-        ),
-      );
-      print("Server status check error: $e");
-      return false;
+      await _showAlert('서버 연결 실패', e.toString());
     }
+    return false;
   }
 
   Future<void> _checkUpdate() async {
     try {
-      final response = await Dio().get(
-        "$DOWNLOAD_BASE/metadata.json",
-        options: Options(
-          sendTimeout: const Duration(seconds: 2),
-          receiveTimeout: const Duration(seconds: 2),
-        ),
-      );
-
+      final response = await _dio.get('$downloadBase/metadata.json');
       final metadata = jsonDecode(response.data) as Map<String, dynamic>;
       final packageInfo = await PackageInfo.fromPlatform();
-
-      if (packageInfo.version == metadata["version"]) {
-        // already latest - no popup
-        return;
-      }
-
+      if (packageInfo.version == metadata['version']) return;
       if (!mounted) return;
-
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (_) => AlertDialog(
-          title: const Text("업데이트"),
-          content: const Text("새 버전이 있습니다."),
-          actions: [
-            TextButton(
-              onPressed: () async {
-                Navigator.pop(context);
-                await _startDownloadWithDialog(metadata);
-              },
-              child: const Text("확인"),
-            ),
-          ],
-        ),
-      );
-    } on DioException catch (e) {
-      if (e.type == DioExceptionType.sendTimeout ||
-          e.type == DioExceptionType.receiveTimeout ||
-          e.type == DioExceptionType.connectionTimeout) {
-        if (!mounted) return;
-
-        await showDialog(
-          context: context,
-          barrierDismissible: false,
-          builder: (_) => AlertDialog(
-            title: const Text("업데이트 불가"),
-            content: const Text("업데이트 불가능. 연결 설정 또는 서버 상태를 확인해주세요."),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text("확인"),
-              ),
-            ],
-          ),
-        );
-        return;
-      }
-      if (!mounted) return;
-      await showDialog(
-        context: context,
-        builder: (_) => AlertDialog(
-          title: const Text("업데이트 오류"),
-          content: Text(e.toString()),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text("확인"),
-            ),
-          ],
-        ),
-      );
-      print("Error checking update: $e");
+      await _showAlert('업데이트', '새 버전이 있습니다.', actions: [
+        TextButton(
+          onPressed: () {
+            Navigator.pop(context);
+            _startDownload(metadata['downloadUrl'] as String);
+          },
+          child: const Text('확인'),
+        )
+      ], barrierDismissible: false);
     } catch (e) {
       if (!mounted) return;
-      await showDialog(
-        context: context,
-        builder: (_) => AlertDialog(
-          title: const Text("업데이트 오류"),
-          content: Text(e.toString()),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text("확인"),
-            ),
-          ],
-        ),
-      );
-      print("Error checking update: $e");
+      await _showAlert('업데이트 오류', e.toString());
     }
   }
 
-  Future<String> _downloadFile(String pathOrUrl, {ProgressCallback? onReceiveProgress}) async {
-    final downloadDir = await getExternalStorageDirectory();
-    final target = "${downloadDir!.path}/myhome.apk";
-
-    final url = pathOrUrl.startsWith('http') ? pathOrUrl : '$DOWNLOAD_BASE/$pathOrUrl';
-
-    await Dio().download(url, target, onReceiveProgress: onReceiveProgress);
-
+  Future<String> _downloadFile(String pathOrUrl,
+      {ProgressCallback? onReceiveProgress}) async {
+    final dir = await getExternalStorageDirectory();
+    final target = '${dir!.path}/myhome.apk';
+    final url = pathOrUrl.startsWith('http') ? pathOrUrl : '$downloadBase/$pathOrUrl';
+    await _dio.download(url, target, onReceiveProgress: onReceiveProgress);
     return target;
   }
 
-  Future<void> _startDownloadWithDialog(Map metadata) async {
-    bool started = false;
+  Future<void> _startDownload(String url) async {
+    if (!mounted) return;
     int received = 0;
     int total = 0;
-
     await showDialog(
       context: context,
       barrierDismissible: false,
       builder: (dialogContext) {
         return StatefulBuilder(builder: (dialogContext, setState) {
-          if (!started) {
-            started = true;
-            // start download
-            final url = metadata["downloadUrl"] as String;
-            _downloadFile(url, onReceiveProgress: (count, len) {
-              setState(() {
-                received = count;
-                total = len;
-              });
-            }).then((target) async {
-              // close progress dialog
-              if (Navigator.of(dialogContext).canPop()) Navigator.of(dialogContext).pop();
-              // notify user and open installer
-              if (!mounted) return;
-              await showDialog(
-                context: context,
-                builder: (_) => AlertDialog(
-                  title: const Text("다운로드 완료"),
-                  content: const Text("다운로드가 완료되었습니다. 설치 화면을 엽니다."),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(context),
-                      child: const Text("확인"),
-                    ),
-                  ],
-                ),
-              );
-              final installer = FlutterAppInstaller();
-              final result = await installer.installApk(filePath: target);
-              print(result);
-            }).catchError((e) async {
-              if (Navigator.of(dialogContext).canPop()) Navigator.of(dialogContext).pop();
-              if (!mounted) return;
-              await showDialog(
-                context: context,
-                builder: (_) => AlertDialog(
-                  title: const Text("다운로드 실패"),
-                  content: Text(e.toString()),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(context),
-                      child: const Text("확인"),
-                    ),
-                  ],
-                ),
-              );
+          _downloadFile(url, onReceiveProgress: (count, len) {
+            setState(() {
+              received = count;
+              total = len;
             });
-          }
+          }).then((target) async {
+            if (!mounted) return;
+            if (Navigator.of(dialogContext).canPop()) Navigator.of(dialogContext).pop();
+            await _showAlert('다운로드 완료', '다운로드가 완료되었습니다. 설치 화면을 엽니다.');
+            await FlutterAppInstaller().installApk(filePath: target);
+          }).catchError((e) async {
+            if (!mounted) return;
+            if (Navigator.of(dialogContext).canPop()) Navigator.of(dialogContext).pop();
+            await _showAlert('다운로드 실패', e.toString());
+          });
 
-          double progress = total > 0 ? received / total : 0.0;
-          String progressText = total > 0
-              ? '${(progress * 100).toStringAsFixed(0)}% (${(received / 1024).toStringAsFixed(0)}KB / ${(total / 1024).toStringAsFixed(0)}KB)'
+          final progressText = total > 0
+              ? '${(received / total * 100).toStringAsFixed(0)}% (${(received / 1024).toStringAsFixed(0)}KB / ${(total / 1024).toStringAsFixed(0)}KB)'
               : '연결중...';
-
           return AlertDialog(
             title: const Text('다운로드 중'),
             content: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                LinearProgressIndicator(value: total > 0 ? progress : null),
+                LinearProgressIndicator(value: total > 0 ? received / total : null),
                 const SizedBox(height: 12),
                 Text(progressText),
               ],
             ),
-            actions: [
-              TextButton(
-                onPressed: () {
-                  // don't allow cancel for now
-                },
-                child: const Text('취소'),
-              ),
+            actions: const [
+              TextButton(onPressed: null, child: Text('취소')),
             ],
           );
         });
@@ -322,33 +161,47 @@ class _CounterPageState extends State<CounterPage> {
     );
   }
 
+  void _increment() => setState(() => _count++);
+  void _toggleTest() => setState(() => _testMode = !_testMode);
+  void _reset() => setState(() {
+        _count = 0;
+        _testMode = false;
+      });
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('MyHome')),
       body: Center(
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
           children: [
             Text('$_count', style: const TextStyle(fontSize: 74)),
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
             ElevatedButton(
-              onPressed: () => setState(() => _testMode = !_testMode),
-              child: Text(_testMode ? '테스트 기능 켜짐' : '테스트 기능 끔'),
+              onPressed: _toggleTest,
+              child: Text(_testMode ? '테스트 모드 켜짐' : '테스트 모드 끔'),
+            ),
+            const SizedBox(height: 8),
+            ElevatedButton(
+              onPressed: _reset,
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.grey[700]),
+              child: const Text('리셋'),
             ),
             if (_testMode) ...[
-              const SizedBox(height: 8),
-              const Text(
-                '테스트 기능이 실행 중입니다.',
-                style: TextStyle(fontSize: 16),
-              ),
+              const SizedBox(height: 12),
+              const Text('테스트 기능이 실행 중입니다.'),
             ],
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => setState(() => _count++),
-        child: const Icon(Icons.add),
+      floatingActionButton: GestureDetector(
+        onLongPress: _reset,
+        child: FloatingActionButton(
+          onPressed: _increment,
+          tooltip: '증가 / 길게 눌러 리셋',
+          child: const Icon(Icons.add),
+        ),
       ),
     );
   }
