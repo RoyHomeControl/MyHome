@@ -33,3 +33,4 @@ android/generatedConfigs/
 *.keystore
 *.jks
 android/key.properties
+lib/secrets.dart

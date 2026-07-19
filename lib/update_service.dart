@@ -7,9 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_app_installer/flutter_app_installer.dart';
 import 'package:path_provider/path_provider.dart';
 
-const serverUrl = 'http://100.108.137.1:11096';
-const downloadBase = 'http://100.108.137.1:11096/download/myhome';
-const _hashStorageName = 'update_hash.txt';
+import 'const.dart';
 
 class UpdateMetadata {
   final String downloadUrl;
@@ -36,7 +34,7 @@ class UpdateService {
             ));
 
   Future<bool> checkServer() async {
-    final response = await _dio.get(serverUrl);
+    final response = await _dio.get(fileServerUrl);
     final data = response.data;
     final status = data is String
         ? jsonDecode(data)['status']
@@ -45,14 +43,14 @@ class UpdateService {
   }
 
   Future<UpdateMetadata> fetchMetadata() async {
-    final response = await _dio.get('$downloadBase/metadata.json');
+    final response = await _dio.get('$fileServerUrl/download/myhome/metadata.json');
     final metadata = jsonDecode(response.data) as Map<String, dynamic>;
     return UpdateMetadata.fromJson(metadata);
   }
 
   Future<File> _hashFile() async {
     final dir = await getApplicationDocumentsDirectory();
-    return File('${dir.path}/$_hashStorageName');
+    return File('${dir.path}/$hashStorageName');
   }
 
   Future<String?> getStoredSha256() async {
@@ -78,7 +76,7 @@ class UpdateService {
       {ProgressCallback? onReceiveProgress}) async {
     final dir = await getExternalStorageDirectory();
     final target = '${dir!.path}/myhome.apk';
-    final url = pathOrUrl.startsWith('http') ? pathOrUrl : '$downloadBase/$pathOrUrl';
+    final url = pathOrUrl.startsWith('http') ? pathOrUrl : '$fileServerUrl/download/myhome/$pathOrUrl';
     await _dio.download(url, target, onReceiveProgress: onReceiveProgress);
     return target;
   }

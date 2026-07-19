@@ -11,6 +11,7 @@ dependencies:
   dio: ^5.9.0
   crypto: ^3.0.6
   path_provider: ^2.1.5
+  shared_preferences: ^2.0.15
   downloadsfolder: ^1.2.0
   flutter_app_installer: ^2.0.0
 

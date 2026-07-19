@@ -46,6 +46,11 @@ jobs:
                 Write-Host "Key properties file not found!"
                 exit 1
               }
+          
+          - name: Create Stub Secret file
+            shell: powershell
+            run: |
+              Copy-Item .\lib\secrets_example.dart .\lib\secrets.dart
 
           - name: Build Android APK
             run:     docker compose -f builder.compose.yaml run --rm flutter-builder
