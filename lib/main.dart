@@ -1,305 +1,34 @@
 ﻿import 'package:flutter/material.dart';
+import 'package:myhome/providers/auth_provider.dart';
+import 'package:provider/provider.dart';
 
-import 'login.dart';
-import 'memo.dart';
-import 'update_service.dart';
+import 'pages/home_page.dart';
+import 'providers/home_provider.dart';
 
-void main() => runApp(const MyApp());
+void main() {
+  runApp(const MyHomeApp());
+}
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class MyHomeApp extends StatelessWidget {
+  const MyHomeApp({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'MyHome',
-      theme: ThemeData(colorSchemeSeed: Colors.blue),
-      home: const HomePage(),
-    );
-  }
-}
-
-class HomePage extends StatefulWidget {
-  const HomePage({super.key});
-
-  @override
-  State<HomePage> createState() => _HomePageState();
-}
-
-class _HomePageState extends State<HomePage> {
-  String? _currentUsername;
-
-  final _updateService = UpdateService();
-  final List<Memo> _memos = [];
-  bool _isLoading = true;
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      _updateService.runUpdateFlow(context);
-      await _initializeApp();
-    });
-  }
-
-  Future<void> _initializeApp() async {
-    final cur = await Session.currentUser();
-    if (cur != null && cur.isNotEmpty) {
-      setState(() => _currentUsername = cur);
-      await _loadMemos();
-      return;
-    }
-
-    final username = await Session.ensureLoggedIn(context);
-    if (username != null && username.isNotEmpty) {
-      setState(() => _currentUsername = username);
-      await _loadMemos();
-      return;
-    }
-
-    if (mounted) setState(() => _isLoading = false);
-  }
-
-  Future<void> _loadMemos() async {
-    try {
-      await MemoRepository.ensureDatabase();
-      final memos = await MemoRepository.fetchByOwner(_currentUsername!);
-      if (mounted) {
-        setState(() {
-          _memos
-            ..clear()
-            ..addAll(memos);
-          _isLoading = false;
-        });
-      }
-    } catch (_) {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
-    }
-  }
-
-  Future<void> _openMemoEditor([Memo? memo]) async {
-    if (_currentUsername == null) {
-      final username = await Session.ensureLoggedIn(context);
-      if (username == null || username.isEmpty) return;
-      setState(() => _currentUsername = username);
-      await _loadMemos();
-    }
-    final result = await MemoService.openEditor(context, memo: memo, ownerId: _currentUsername!);
-    if (result == null) return;
-
-    setState(() {
-      final index = _memos.indexWhere((item) => item.id == result.id);
-      if (index >= 0) {
-        _memos[index] = result;
-      } else {
-        _memos.insert(0, result);
-      }
-    });
-  }
-
-
-
-  Future<void> _handleTrash(Memo memo) async {
-    try {
-      await MemoService.deleteMemo(memo);
-      setState(() {
-        _memos.removeWhere((m) => m.id == memo.id);
-      });
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('메모가 삭제되었습니다.')));
-    } catch (_) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('메모 삭제에 실패했습니다.')));
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(_currentUsername == null ? 'MyHome' : 'MyHome (${_currentUsername!})'),
-        actions: [
-          if (_currentUsername != null)
-            IconButton(
-              tooltip: '로그아웃',
-              icon: const Icon(Icons.logout),
-              onPressed: () async {
-                await Session.clear();
-                if (mounted) {
-                  setState(() {
-                    _currentUsername = null;
-                    _memos.clear();
-                  });
-                }
-              },
-            ),
-        ],
+    return MultiProvider(providers: [
+        ChangeNotifierProvider(
+          create: (_) => HomeProvider(),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => AuthProvider(),
+        ),
+      ],
+      child: MaterialApp(
+        title: 'MyHome',
+        theme: ThemeData(
+          colorSchemeSeed: Colors.blue,
+        ),
+        home: const HomePage(),
       ),
-      body: Stack(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(12),
-            child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : _currentUsername == null
-                    ? Center(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Text(
-                              '로그인이 필요합니다.',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(fontSize: 18),
-                            ),
-                            const SizedBox(height: 16),
-                            ElevatedButton(
-                              onPressed: () async {
-                                final username = await Session.ensureLoggedIn(context);
-                                if (username != null && username.isNotEmpty) {
-                                  setState(() => _currentUsername = username);
-                                  await _loadMemos();
-                                }
-                              },
-                              child: const Text('로그인 / 회원가입'),
-                            ),
-                          ],
-                        ),
-                      )
-                    : _memos.isEmpty
-                        ? const Center(
-                            child: Text(
-                              '메모가 없습니다. + 버튼을 눌러 메모를 추가하세요.',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(fontSize: 18),
-                            ),
-                          )
-                        : GridView.builder(
-                            itemCount: _memos.length,
-                            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                              crossAxisCount: 2,
-                              crossAxisSpacing: 12,
-                              mainAxisSpacing: 12,
-                              childAspectRatio: 0.9,
-                            ),
-                            itemBuilder: (context, index) {
-                              final memo = _memos[index];
-                              return LongPressDraggable<Memo>(
-                                data: memo,
-                                feedback: Material(
-                                  color: Colors.transparent,
-                                  child: Container(
-                                    width: 160,
-                                    padding: const EdgeInsets.all(12),
-                                    decoration: BoxDecoration(
-                                      color: Colors.yellow[200],
-                                      borderRadius: BorderRadius.circular(12),
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: Colors.black.withAlpha((0.12 * 255).round()),
-                                          blurRadius: 8,
-                                        ),
-                                      ],
-                                    ),
-                                    child: Text(memo.title, style: const TextStyle(fontWeight: FontWeight.bold)),
-                                  ),
-                                ),
-                                child: Material(
-                                  color: Colors.transparent,
-                                  child: InkWell(
-                                    borderRadius: BorderRadius.circular(16),
-                                    onTap: () => _openMemoEditor(memo),
-                                    child: Container(
-                                      padding: const EdgeInsets.all(16),
-                                      decoration: BoxDecoration(
-                                        color: Colors.yellow[200],
-                                        borderRadius: BorderRadius.circular(16),
-                                        boxShadow: [
-                                          BoxShadow(
-                                            color: Colors.black.withAlpha((0.12 * 255).round()),
-                                            blurRadius: 8,
-                                          ),
-                                        ],
-                                      ),
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            memo.title,
-                                            maxLines: 2,
-                                            overflow: TextOverflow.ellipsis,
-                                            style: const TextStyle(
-                                              fontSize: 16,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                          const SizedBox(height: 8),
-                                          Expanded(
-                                            child: Text(
-                                              memo.content,
-                                              maxLines: 6,
-                                              overflow: TextOverflow.ellipsis,
-                                              style: const TextStyle(fontSize: 14),
-                                            ),
-                                          ),
-                                          const SizedBox(height: 12),
-                                          if (memo.dueAt != null)
-                                            Text(
-                                              '알림: ${_formatDateTime(memo.dueAt!)}',
-                                              style: const TextStyle(fontSize: 12, color: Colors.black54),
-                                            ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
-          ),
-          Positioned(
-            left: 16,
-            bottom: 16,
-            child: DragTarget<Memo>(
-              builder: (context, candidateData, rejectedData) {
-                final active = candidateData.isNotEmpty;
-                return Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: active ? Colors.red[400] : Colors.red[200],
-                    borderRadius: BorderRadius.circular(12),
-                    boxShadow: [
-                      BoxShadow(color: Colors.black.withAlpha(30), blurRadius: 6),
-                    ],
-                  ),
-                  child: Column(
-                    children: [
-                      Icon(Icons.delete, color: Colors.white),
-                      const SizedBox(height: 4),
-                      Text('휴지통', style: TextStyle(color: Colors.white)),
-                    ],
-                  ),
-                );
-              },
-              onWillAcceptWithDetails: (details) => true,
-              onAcceptWithDetails: (details) async {
-                await _handleTrash(details.data);
-              },
-            ),
-          ),
-        ],
-      ),
-      floatingActionButton: _currentUsername == null
-          ? null
-          : FloatingActionButton(
-              onPressed: () => _openMemoEditor(),
-              tooltip: '메모 추가',
-              child: const Icon(Icons.add),
-            ),
     );
-  }
-
-  String _formatDateTime(DateTime dateTime) {
-    return '${dateTime.year.toString().padLeft(4, '0')}-${dateTime.month.toString().padLeft(2, '0')}-${dateTime.day.toString().padLeft(2, '0')} '
-        '${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}';
   }
 }

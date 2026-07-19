@@ -50,7 +50,7 @@ jobs:
           - name: Create Stub Secret file
             shell: powershell
             run: |
-              Copy-Item .\lib\secrets_example.dart .\lib\secrets.dart
+              Copy-Item .\lib\core\secrets_example.dart .\lib\core\secrets.dart
 
           - name: Build Android APK
             env:
