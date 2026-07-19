@@ -272,7 +272,8 @@ class _CounterPageState extends State<CounterPage> {
                 ),
               );
               final installer = FlutterAppInstaller();
-              await installer.installApk(filePath: target);
+              final result = await installer.installApk(filePath: target);
+              print(result);
             }).catchError((e) async {
               if (Navigator.of(dialogContext).canPop()) Navigator.of(dialogContext).pop();
               if (!mounted) return;
