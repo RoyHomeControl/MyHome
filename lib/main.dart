@@ -1,4 +1,8 @@
-﻿import 'package:flutter/material.dart';
+﻿import 'dart:convert';
+import 'dart:io';
+
+import 'package:flutter/material.dart';
+import 'package:path_provider/path_provider.dart';
 
 import 'update_service.dart';
 
@@ -31,9 +35,36 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       _updateService.runUpdateFlow(context);
+      await _loadNotes();
     });
+  }
+
+  Future<File> _notesFile() async {
+    final dir = await getApplicationDocumentsDirectory();
+    return File('${dir.path}/notes.json');
+  }
+
+  Future<void> _loadNotes() async {
+    try {
+      final file = await _notesFile();
+      if (await file.exists()) {
+        final content = await file.readAsString();
+        final list = jsonDecode(content) as List<dynamic>;
+        setState(() {
+          _notes.clear();
+          _notes.addAll(list.map((e) => e.toString()));
+        });
+      }
+    } catch (_) {
+      // ignore read errors
+    }
+  }
+
+  Future<void> _saveNotes() async {
+    final file = await _notesFile();
+    await file.writeAsString(jsonEncode(_notes));
   }
 
   Future<void> _addNote() async {
@@ -44,16 +75,17 @@ class _HomePageState extends State<HomePage> {
       setState(() {
         _notes.insert(0, note.trim());
       });
+      await _saveNotes();
     }
   }
 
-  void _removeNoteAt(int index) {
-    final removed = _notes[index];
+  Future<void> _removeNoteAt(int index) async {
     setState(() {
       _notes.removeAt(index);
     });
+    await _saveNotes();
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('메모가 삭제되었습니다.')),
+      const SnackBar(content: Text('메모가 삭제되었습니다.')),
     );
   }
 
