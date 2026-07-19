@@ -118,26 +118,30 @@ class _HomePageState extends State<HomePage> {
     if (!mounted) return;
     int received = 0;
     int total = 0;
+    bool started = false;
     await showDialog(
       context: context,
       barrierDismissible: false,
       builder: (dialogContext) {
         return StatefulBuilder(builder: (dialogContext, setState) {
-          _downloadFile(url, onReceiveProgress: (count, len) {
-            setState(() {
-              received = count;
-              total = len;
+          if (!started) {
+            started = true;
+            _downloadFile(url, onReceiveProgress: (count, len) {
+              setState(() {
+                received = count;
+                total = len;
+              });
+            }).then((target) async {
+              if (!mounted) return;
+              if (Navigator.of(dialogContext).canPop()) Navigator.of(dialogContext).pop();
+              await _showAlert('다운로드 완료', '다운로드가 완료되었습니다. 설치 화면을 엽니다.');
+              await FlutterAppInstaller().installApk(filePath: target);
+            }).catchError((e) async {
+              if (!mounted) return;
+              if (Navigator.of(dialogContext).canPop()) Navigator.of(dialogContext).pop();
+              await _showAlert('다운로드 실패', e.toString());
             });
-          }).then((target) async {
-            if (!mounted) return;
-            if (Navigator.of(dialogContext).canPop()) Navigator.of(dialogContext).pop();
-            await _showAlert('다운로드 완료', '다운로드가 완료되었습니다. 설치 화면을 엽니다.');
-            await FlutterAppInstaller().installApk(filePath: target);
-          }).catchError((e) async {
-            if (!mounted) return;
-            if (Navigator.of(dialogContext).canPop()) Navigator.of(dialogContext).pop();
-            await _showAlert('다운로드 실패', e.toString());
-          });
+          }
 
           final progressText = total > 0
               ? '${(received / total * 100).toStringAsFixed(0)}% (${(received / 1024).toStringAsFixed(0)}KB / ${(total / 1024).toStringAsFixed(0)}KB)'
