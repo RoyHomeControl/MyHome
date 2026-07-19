@@ -125,6 +125,26 @@ class MemoRepository {
   }
 }
 
+class MemoService {
+  MemoService._();
+
+  static Future<List<Memo>> loadForUser(String ownerId) async {
+    await MemoRepository.ensureDatabase();
+    return MemoRepository.fetchByOwner(ownerId);
+  }
+
+  static Future<Memo?> openEditor(BuildContext context, {Memo? memo, required String ownerId}) async {
+    final result = await Navigator.of(context).push<Memo>(
+      MaterialPageRoute(builder: (_) => AddEditMemoPage(memo: memo, ownerId: ownerId)),
+    );
+    return result;
+  }
+
+  static Future<void> deleteMemo(Memo memo) async {
+    await MemoRepository.delete(memo);
+  }
+}
+
 class AddEditMemoPage extends StatefulWidget {
   final Memo? memo;
   final String ownerId;
@@ -141,6 +161,8 @@ class _AddEditMemoPageState extends State<AddEditMemoPage> {
   late DateTime _createdAt;
   DateTime? _dueAt;
   final _formKey = GlobalKey<FormState>();
+  late final FocusNode _contentFocusNode;
+  bool _isContentFocused = false;
 
   @override
   void initState() {
@@ -150,12 +172,20 @@ class _AddEditMemoPageState extends State<AddEditMemoPage> {
     _contentController = TextEditingController(text: memo?.content ?? '');
     _createdAt = memo?.createdAt ?? DateTime.now();
     _dueAt = memo?.dueAt;
+    _contentFocusNode = FocusNode();
+    _contentFocusNode.addListener(() {
+      setState(() {
+        _isContentFocused = _contentFocusNode.hasFocus;
+      });
+    });
   }
 
   @override
   void dispose() {
     _titleController.dispose();
     _contentController.dispose();
+    _contentFocusNode.removeListener(() {});
+    _contentFocusNode.dispose();
     super.dispose();
   }
 
@@ -230,76 +260,95 @@ class _AddEditMemoPageState extends State<AddEditMemoPage> {
         padding: const EdgeInsets.all(16),
         child: Form(
           key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              TextFormField(
-                controller: _titleController,
-                decoration: const InputDecoration(labelText: '제목'),
-                validator: (value) => value == null || value.trim().isEmpty ? '제목을 입력하세요.' : null,
-              ),
-              const SizedBox(height: 12),
-              Expanded(
-                child: TextFormField(
-                  controller: _contentController,
-                  decoration: const InputDecoration(
-                    labelText: '내용',
-                    alignLabelWithHint: true,
-                    border: OutlineInputBorder(),
-                  ),
-                  maxLines: null,
-                  expands: true,
-                  textInputAction: TextInputAction.newline,
-                  validator: (value) => value == null || value.trim().isEmpty ? '내용을 입력하세요.' : null,
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // 제목은 항상 보이도록 둠
+                TextFormField(
+                  controller: _titleController,
+                  decoration: const InputDecoration(labelText: '제목'),
+                  validator: (value) => value == null || value.trim().isEmpty ? '제목을 입력하세요.' : null,
                 ),
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text('생성일', style: TextStyle(fontWeight: FontWeight.w600)),
-                        const SizedBox(height: 4),
-                        Text(_formatDateTime(_createdAt)),
-                      ],
+                const SizedBox(height: 12),
+                // 내용 영역은 크기를 제한해서 키보드가 올라와도 덜 줄어들게 함
+                Flexible(
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(minHeight: 160, maxHeight: MediaQuery.of(context).size.height * 0.6),
+                    child: TextFormField(
+                      focusNode: _contentFocusNode,
+                      controller: _contentController,
+                      decoration: const InputDecoration(
+                        labelText: '내용',
+                        alignLabelWithHint: true,
+                        border: OutlineInputBorder(),
+                      ),
+                      maxLines: null,
+                      expands: false,
+                      textInputAction: TextInputAction.newline,
+                      validator: (value) => value == null || value.trim().isEmpty ? '내용을 입력하세요.' : null,
                     ),
                   ),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text('알림일', style: TextStyle(fontWeight: FontWeight.w600)),
-                        const SizedBox(height: 4),
-                        Text(_dueAt != null ? _formatDateTime(_dueAt!) : '설정 없음'),
-                      ],
-                    ),
+                ),
+                const SizedBox(height: 12),
+                // 생성일 / 알림일 및 관련 버튼은 내용 포커스 시 숨김
+                if (!_isContentFocused) ...[
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('생성일', style: TextStyle(fontWeight: FontWeight.w600)),
+                            const SizedBox(height: 4),
+                            Text(_formatDateTime(_createdAt)),
+                          ],
+                        ),
+                      ),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('알림일', style: TextStyle(fontWeight: FontWeight.w600)),
+                            const SizedBox(height: 4),
+                            Text(_dueAt != null ? _formatDateTime(_dueAt!) : '설정 없음'),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: _pickDueDate,
+                          child: const Text('알림일 선택'),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      OutlinedButton(
+                        onPressed: _dueAt != null ? _clearDueDate : null,
+                        child: const Text('삭제'),
+                      ),
+                    ],
                   ),
                 ],
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: _pickDueDate,
-                      child: const Text('알림일 선택'),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  OutlinedButton(
-                    onPressed: _dueAt != null ? _clearDueDate : null,
-                    child: const Text('삭제'),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              ElevatedButton(
-                onPressed: _saveMemo,
-                child: Text(isEditing ? '저장' : '추가'),
-              ),
-            ],
+                const SizedBox(height: 80),
+              ],
+            ),
+          ),
+        ),
+      ),
+      bottomNavigationBar: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: SizedBox(
+            height: 48,
+            child: ElevatedButton(
+              onPressed: _saveMemo,
+              child: Text(isEditing ? '저장' : '추가'),
+            ),
           ),
         ),
       ),

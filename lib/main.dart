@@ -86,13 +86,7 @@ class _HomePageState extends State<HomePage> {
       setState(() => _currentUsername = username);
       await _loadMemos();
     }
-
-    final result = await Navigator.of(context).push<Memo>(
-      MaterialPageRoute(builder: (_) => AddEditMemoPage(
-        memo: memo,
-        ownerId: _currentUsername!,
-      )),
-    );
+    final result = await MemoService.openEditor(context, memo: memo, ownerId: _currentUsername!);
     if (result == null) return;
 
     setState(() {
@@ -105,20 +99,17 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
-  Future<void> _deleteMemo(int index) async {
-    final memo = _memos[index];
+
+
+  Future<void> _handleTrash(Memo memo) async {
     try {
-      await MemoRepository.delete(memo);
+      await MemoService.deleteMemo(memo);
       setState(() {
-        _memos.removeAt(index);
+        _memos.removeWhere((m) => m.id == memo.id);
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('메모가 삭제되었습니다.')),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('메모가 삭제되었습니다.')));
     } catch (_) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('메모 삭제에 실패했습니다.')),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('메모 삭제에 실패했습니다.')));
     }
   }
 
@@ -144,120 +135,158 @@ class _HomePageState extends State<HomePage> {
             ),
         ],
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(12),
-        child: _isLoading
-            ? const Center(child: CircularProgressIndicator())
-            : _currentUsername == null
-                ? Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Text(
-                          '로그인이 필요합니다.',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(fontSize: 18),
-                        ),
-                        const SizedBox(height: 16),
-                        ElevatedButton(
-                          onPressed: () async {
-                            final username = await Session.ensureLoggedIn(context);
-                            if (username != null && username.isNotEmpty) {
-                              setState(() => _currentUsername = username);
-                              await _loadMemos();
-                            }
-                          },
-                          child: const Text('로그인 / 회원가입'),
-                        ),
-                      ],
-                    ),
-                  )
-                : _memos.isEmpty
-                    ? const Center(
-                        child: Text(
-                          '메모가 없습니다. + 버튼을 눌러 메모를 추가하세요.',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(fontSize: 18),
+      body: Stack(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(12),
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : _currentUsername == null
+                    ? Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Text(
+                              '로그인이 필요합니다.',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(fontSize: 18),
+                            ),
+                            const SizedBox(height: 16),
+                            ElevatedButton(
+                              onPressed: () async {
+                                final username = await Session.ensureLoggedIn(context);
+                                if (username != null && username.isNotEmpty) {
+                                  setState(() => _currentUsername = username);
+                                  await _loadMemos();
+                                }
+                              },
+                              child: const Text('로그인 / 회원가입'),
+                            ),
+                          ],
                         ),
                       )
-                : GridView.builder(
-                    itemCount: _memos.length,
-                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2,
-                      crossAxisSpacing: 12,
-                      mainAxisSpacing: 12,
-                      childAspectRatio: 0.9,
-                    ),
-                    itemBuilder: (context, index) {
-                      final memo = _memos[index];
-                      return Material(
-                        color: Colors.transparent,
-                        child: InkWell(
-                          borderRadius: BorderRadius.circular(16),
-                          onTap: () => _openMemoEditor(memo),
-                          child: Container(
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              color: Colors.yellow[200],
-                              borderRadius: BorderRadius.circular(16),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withAlpha((0.12 * 255).round()),
-                                  blurRadius: 8,
-                                ),
-                              ],
+                    : _memos.isEmpty
+                        ? const Center(
+                            child: Text(
+                              '메모가 없습니다. + 버튼을 눌러 메모를 추가하세요.',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(fontSize: 18),
                             ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Expanded(
-                                      child: Text(
-                                        memo.title,
-                                        maxLines: 2,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: const TextStyle(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.bold,
+                          )
+                        : GridView.builder(
+                            itemCount: _memos.length,
+                            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 2,
+                              crossAxisSpacing: 12,
+                              mainAxisSpacing: 12,
+                              childAspectRatio: 0.9,
+                            ),
+                            itemBuilder: (context, index) {
+                              final memo = _memos[index];
+                              return LongPressDraggable<Memo>(
+                                data: memo,
+                                feedback: Material(
+                                  color: Colors.transparent,
+                                  child: Container(
+                                    width: 160,
+                                    padding: const EdgeInsets.all(12),
+                                    decoration: BoxDecoration(
+                                      color: Colors.yellow[200],
+                                      borderRadius: BorderRadius.circular(12),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.black.withAlpha((0.12 * 255).round()),
+                                          blurRadius: 8,
                                         ),
+                                      ],
+                                    ),
+                                    child: Text(memo.title, style: const TextStyle(fontWeight: FontWeight.bold)),
+                                  ),
+                                ),
+                                child: Material(
+                                  color: Colors.transparent,
+                                  child: InkWell(
+                                    borderRadius: BorderRadius.circular(16),
+                                    onTap: () => _openMemoEditor(memo),
+                                    child: Container(
+                                      padding: const EdgeInsets.all(16),
+                                      decoration: BoxDecoration(
+                                        color: Colors.yellow[200],
+                                        borderRadius: BorderRadius.circular(16),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: Colors.black.withAlpha((0.12 * 255).round()),
+                                            blurRadius: 8,
+                                          ),
+                                        ],
+                                      ),
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            memo.title,
+                                            maxLines: 2,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: const TextStyle(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 8),
+                                          Expanded(
+                                            child: Text(
+                                              memo.content,
+                                              maxLines: 6,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: const TextStyle(fontSize: 14),
+                                            ),
+                                          ),
+                                          const SizedBox(height: 12),
+                                          if (memo.dueAt != null)
+                                            Text(
+                                              '알림: ${_formatDateTime(memo.dueAt!)}',
+                                              style: const TextStyle(fontSize: 12, color: Colors.black54),
+                                            ),
+                                        ],
                                       ),
                                     ),
-                                    IconButton(
-                                      icon: const Icon(Icons.delete_outline, size: 20),
-                                      onPressed: () => _deleteMemo(index),
-                                      padding: EdgeInsets.zero,
-                                      constraints: const BoxConstraints(),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 8),
-                                Expanded(
-                                  child: Text(
-                                    memo.content,
-                                    maxLines: 6,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(fontSize: 14),
                                   ),
                                 ),
-                                const SizedBox(height: 12),
-                                Text(
-                                  '생성: ${_formatDateTime(memo.createdAt)}',
-                                  style: const TextStyle(fontSize: 12, color: Colors.black54),
-                                ),
-                                if (memo.dueAt != null)
-                                  Text(
-                                    '알림: ${_formatDateTime(memo.dueAt!)}',
-                                    style: const TextStyle(fontSize: 12, color: Colors.black54),
-                                  ),
-                              ],
-                            ),
+                              );
+                            },
                           ),
-                        ),
-                      );
-                    },
+          ),
+          Positioned(
+            left: 16,
+            bottom: 16,
+            child: DragTarget<Memo>(
+              builder: (context, candidateData, rejectedData) {
+                final active = candidateData.isNotEmpty;
+                return Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: active ? Colors.red[400] : Colors.red[200],
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(color: Colors.black.withAlpha(30), blurRadius: 6),
+                    ],
                   ),
+                  child: Column(
+                    children: [
+                      Icon(Icons.delete, color: Colors.white),
+                      const SizedBox(height: 4),
+                      Text('휴지통', style: TextStyle(color: Colors.white)),
+                    ],
+                  ),
+                );
+              },
+              onWillAcceptWithDetails: (details) => true,
+              onAcceptWithDetails: (details) async {
+                await _handleTrash(details.data);
+              },
+            ),
+          ),
+        ],
       ),
       floatingActionButton: _currentUsername == null
           ? null
