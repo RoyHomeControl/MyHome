@@ -53,7 +53,10 @@ jobs:
               Copy-Item .\lib\secrets_example.dart .\lib\secrets.dart
 
           - name: Build Android APK
-            run:     docker compose -f builder.compose.yaml run --rm flutter-builder
+            env:
+                COUCHDB_USER: ${{secrets.COUCHDB_USER}}
+                COUCHDB_PASSWORD: ${{secrets.COUCHDB_PASSWORD}}
+            run:     docker compose -f builder.compose.yaml run -e COUCHDB_USER -e COUCHDB_PASSWORD --rm flutter-builder
             shell: powershell
         
           - name: Generate metadata
