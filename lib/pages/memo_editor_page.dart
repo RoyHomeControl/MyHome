@@ -123,6 +123,15 @@ class _MemoEditorPageState extends State<MemoEditorPage> {
     return Scaffold(
       appBar: AppBar(
         title: Text(isEditing ? '메모 수정' : '메모 추가'),
+        actions: [
+          TextButton(
+            onPressed: _saveMemo,
+            child: const Text(
+              '저장',
+              style: TextStyle(color: Colors.white),
+            ),
+          ),
+        ],
       ),
       body: Padding(
         padding: const EdgeInsets.all(16),
@@ -202,20 +211,8 @@ class _MemoEditorPageState extends State<MemoEditorPage> {
                     ],
                   ),
                 ],
-                const SizedBox(height: 80),
+                const SizedBox(height: 24),
               ],
-            ),
-          ),
-        ),
-      ),
-      bottomNavigationBar: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: SizedBox(
-            height: 48,
-            child: ElevatedButton(
-              onPressed: _saveMemo,
-              child: Text(isEditing ? '저장' : '추가'),
             ),
           ),
         ),

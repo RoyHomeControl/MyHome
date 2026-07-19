@@ -47,9 +47,14 @@ class TrashArea extends StatelessWidget {
 
 
           child:
-              const Icon(
-                Icons.delete,
-                color: Colors.white,
+              Container(
+                width: 56,
+                height: 56,
+                alignment: Alignment.center,
+                child: const Icon(
+                  Icons.delete,
+                  color: Colors.white,
+                ),
               ),
         );
       },

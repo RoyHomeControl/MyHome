@@ -40,62 +40,49 @@ class HomePage extends StatelessWidget {
       ),
 
       body: Stack(
-        children:[
+        children: [
           MemoGrid(
-          memos: provider.memos,
-          onTap: (memo)  async {
-            final result = 
-              await MemoEditorPage.open(
+            memos: provider.memos,
+            onTap: (memo) async {
+              final result = await MemoEditorPage.open(
                 context,
                 memo: memo,
                 ownerId: provider.username!,
               );
-            
-            if(result != null && context.mounted) {
-              context
-                .read<HomeProvider>()
-                .addOrUpdateMemo(result);
-            }
-          },
-        ),
-        Positioned(
-          left:16,
-          bottom:16,
-          child:
-            TrashArea(
-              onDelete:(memo){
-                return context
-                  .read<HomeProvider>()
-                  .deleteMemo(memo);
-              },
-            ),
-        ),
+
+              if (result != null && context.mounted) {
+                context.read<HomeProvider>().addOrUpdateMemo(result);
+              }
+            },
+          ),
         ],
       ),
-      floatingActionButton:
-      FloatingActionButton(
-        onPressed: () async {
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+      floatingActionButton: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          TrashArea(
+            onDelete: (memo) {
+              return context.read<HomeProvider>().deleteMemo(memo);
+            },
+          ),
+          const SizedBox(height: 12),
+          FloatingActionButton(
+            onPressed: () async {
+              final result = await MemoEditorPage.open(
+                context,
+                ownerId: provider.username!,
+              );
 
-          final result =
-            await MemoEditorPage.open(
-              context,
-              ownerId: provider.username!,
-            );
-
-
-          if(result != null && context.mounted){
-
-            context
-                .read<HomeProvider>()
-                .addOrUpdateMemo(result);
-
-          }
-        },
-
-        child:
-          const Icon(Icons.add),
+              if (result != null && context.mounted) {
+                context.read<HomeProvider>().addOrUpdateMemo(result);
+              }
+            },
+            child: const Icon(Icons.add),
+          ),
+        ],
       ),
-      
     );
   }
 }

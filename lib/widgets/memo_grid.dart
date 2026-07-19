@@ -54,16 +54,20 @@ class MemoGrid extends StatelessWidget {
         return LongPressDraggable<Memo>(
 
           data: memo,
-
+          childWhenDragging: Opacity(
+            opacity: 0.4,
+            child: _MemoCard(memo: memo),
+          ),
 
           feedback: Material(
             color: Colors.transparent,
-
-            child: _MemoCard(
-              memo: memo,
+            child: SizedBox(
+              width: 170,
+              child: _MemoCard(
+                memo: memo,
+              ),
             ),
           ),
-
 
           child: InkWell(
 
