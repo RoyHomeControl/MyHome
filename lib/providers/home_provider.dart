@@ -92,12 +92,12 @@ class HomeProvider extends ChangeNotifier {
 
 
   Future<void> deleteMemo(Memo memo) async {
-
     await MemoProvider.deleteMemo(memo);
-    _memos.removeWhere(
-        (m)=>m.id == memo.id
-    );
+    removeMemo(memo);
+  }
 
+  void removeMemo(Memo memo) {
+    _memos.removeWhere((m) => m.id == memo.id);
     notifyListeners();
   }
 

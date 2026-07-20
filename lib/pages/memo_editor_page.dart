@@ -36,6 +36,7 @@ class _MemoEditorPageState extends State<MemoEditorPage> {
   late final TextEditingController _titleController;
   late final TextEditingController _contentController;
   late DateTime _createdAt;
+  bool _isDeleting = false;
   DateTime? _dueAt;
   final _formKey = GlobalKey<FormState>();
   late final FocusNode _contentFocusNode;
@@ -129,10 +130,16 @@ class _MemoEditorPageState extends State<MemoEditorPage> {
   }
 
   Future<void> _deleteMemo() async {
+    if (_isDeleting) return;
+
     if (widget.memo == null) {
       if (mounted) Navigator.of(context).pop();
       return;
     }
+
+    setState(() {
+      _isDeleting = true;
+    });
 
     try {
       await MemoProvider.deleteMemo(widget.memo!);
@@ -144,6 +151,11 @@ class _MemoEditorPageState extends State<MemoEditorPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('삭제에 실패했습니다: $e')),
         );
+      }
+      if (mounted) {
+        setState(() {
+          _isDeleting = false;
+        });
       }
     }
   }

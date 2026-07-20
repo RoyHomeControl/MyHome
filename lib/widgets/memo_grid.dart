@@ -8,12 +8,13 @@ class MemoGrid extends StatelessWidget {
   final List<Memo> memos;
 
   final Function(Memo memo)? onTap;
-
+  final void Function(Offset? position)? onDragPositionChanged;
 
   const MemoGrid({
     super.key,
     required this.memos,
     this.onTap,
+    this.onDragPositionChanged,
   });
 
 
@@ -54,6 +55,12 @@ class MemoGrid extends StatelessWidget {
         return Draggable<Memo>(
           data: memo,
           maxSimultaneousDrags: 1,
+          onDragUpdate: (details) {
+            onDragPositionChanged?.call(details.globalPosition);
+          },
+          onDragEnd: (_) {
+            onDragPositionChanged?.call(null);
+          },
           feedback: Material(
             color: Colors.transparent,
             child: SizedBox(

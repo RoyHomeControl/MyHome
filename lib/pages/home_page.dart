@@ -17,6 +17,7 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   final _updateService = UpdateService();
+  Offset? _dragPosition;
 
   @override
   void initState() {
@@ -60,6 +61,11 @@ class _HomePageState extends State<HomePage> {
           Scrollbar(
             child: MemoGrid(
               memos: provider.memos,
+              onDragPositionChanged: (position) {
+                setState(() {
+                  _dragPosition = position;
+                });
+              },
               onTap: (memo) async {
                 final result = await MemoEditorPage.open(
                   context,
@@ -69,7 +75,7 @@ class _HomePageState extends State<HomePage> {
 
                 if (!context.mounted) return;
                 if (result?.deleted == true) {
-                  await context.read<HomeProvider>().deleteMemo(memo);
+                  context.read<HomeProvider>().removeMemo(memo);
                 } else if (result?.memo != null) {
                   await context.read<HomeProvider>().addOrUpdateMemo(result!.memo!);
                 }
@@ -78,11 +84,12 @@ class _HomePageState extends State<HomePage> {
           ),
           Positioned(
             left: 16,
-            bottom: 16,
+            bottom: 60,
             child: SizedBox(
               width: 56,
               height: 56,
               child: TrashArea(
+                dragPosition: _dragPosition,
                 onDelete: (memo) {
                   return context.read<HomeProvider>().deleteMemo(memo);
                 },

@@ -57,6 +57,23 @@ class MemoRepository {
     if (memo.id == null || memo.rev == null) {
       throw ArgumentError('Memo delete requires id and rev');
     }
-    await CouchDb.deleteDocument(memoDB, memo.id!, memo.rev!);
+
+    try {
+      await CouchDb.deleteDocument(memoDB, memo.id!, memo.rev!);
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 404) {
+        return;
+      }
+
+      if (e.response?.statusCode == 409) {
+        final latestDoc = await CouchDb.getDocument(memoDB, memo.id!);
+        final latestRev = latestDoc['_rev']?.toString();
+        if (latestRev != null) {
+          await CouchDb.deleteDocument(memoDB, memo.id!, latestRev);
+          return;
+        }
+      }
+      rethrow;
+    }
   }
 }
