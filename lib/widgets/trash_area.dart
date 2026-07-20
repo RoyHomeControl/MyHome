@@ -4,25 +4,23 @@ import '../models/memo.dart';
 
 class TrashArea extends StatelessWidget {
   final Future<void> Function(Memo memo)? onDelete;
-  final Offset? dragPosition;
+  final Rect? dragRect;
 
   const TrashArea({
     super.key,
     this.onDelete,
-    this.dragPosition,
+    this.dragRect,
   });
 
   @override
   Widget build(BuildContext context) {
     final renderBox = context.findRenderObject() as RenderBox?;
-    final active = dragPosition != null && renderBox != null
-        ? Rect.fromLTWH(
+    final active = dragRect != null && renderBox != null && Rect.fromLTWH(
             renderBox.localToGlobal(Offset.zero).dx,
             renderBox.localToGlobal(Offset.zero).dy,
             renderBox.size.width,
             renderBox.size.height,
-          ).contains(dragPosition!)
-        : false;
+          ).overlaps(dragRect!);
 
     return DragTarget<Memo>(
       onWillAcceptWithDetails: (details) => true,

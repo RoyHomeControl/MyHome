@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../core/notification_service.dart';
 import '../models/memo.dart';
 import '../providers/memo_provider.dart';
 
@@ -37,9 +38,11 @@ class _MemoEditorPageState extends State<MemoEditorPage> {
   late final TextEditingController _contentController;
   late DateTime _createdAt;
   bool _isDeleting = false;
+  bool _useTitle = false;
   DateTime? _dueAt;
   final _formKey = GlobalKey<FormState>();
   late final FocusNode _contentFocusNode;
+  late final FocusNode _titleFocusNode;
 
   @override
   void initState() {
@@ -49,15 +52,17 @@ class _MemoEditorPageState extends State<MemoEditorPage> {
     _contentController = TextEditingController(text: memo?.content ?? '');
     _createdAt = memo?.createdAt ?? DateTime.now();
     _dueAt = memo?.dueAt;
+    _useTitle = (memo?.title ?? '').trim().isNotEmpty;
     _contentFocusNode = FocusNode();
+    _titleFocusNode = FocusNode();
   }
 
   @override
   void dispose() {
     _titleController.dispose();
     _contentController.dispose();
-    _contentFocusNode.removeListener(() {});
     _contentFocusNode.dispose();
+    _titleFocusNode.dispose();
     super.dispose();
   }
 
@@ -105,18 +110,26 @@ class _MemoEditorPageState extends State<MemoEditorPage> {
   Future<void> _saveMemo() async {
     if (!_formKey.currentState!.validate()) return;
 
+    final title = _useTitle ? _titleController.text.trim() : '';
+    final content = _contentController.text.trim();
+
     final memo = Memo(
       id: widget.memo?.id,
       rev: widget.memo?.rev,
       ownerId: widget.memo?.ownerId ?? widget.ownerId,
-      title: _titleController.text.trim(),
-      content: _contentController.text.trim(),
+      title: title,
+      content: content,
       createdAt: _createdAt,
       dueAt: _dueAt,
     );
 
     try {
       final saved = await MemoProvider.saveMemo(memo);
+      if (saved.dueAt != null) {
+        await NotificationService.instance.scheduleMemoNotification(saved);
+      } else {
+        await NotificationService.instance.cancelMemoNotification(saved);
+      }
       if (mounted) {
         Navigator.of(context).pop(MemoEditorResult(memo: saved));
       }
@@ -142,6 +155,7 @@ class _MemoEditorPageState extends State<MemoEditorPage> {
     });
 
     try {
+      await NotificationService.instance.cancelMemoNotification(widget.memo!);
       await MemoProvider.deleteMemo(widget.memo!);
       if (mounted) {
         Navigator.of(context).pop(const MemoEditorResult(deleted: true));
@@ -175,41 +189,61 @@ class _MemoEditorPageState extends State<MemoEditorPage> {
           ),
         ],
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Form(
-          key: _formKey,
-          child: Scrollbar(
-            child: SingleChildScrollView(
-              child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // 제목은 항상 보이도록 둠
-                TextFormField(
-                  controller: _titleController,
-                  decoration: const InputDecoration(labelText: '제목'),
-                  validator: (value) => value == null || value.trim().isEmpty ? '제목을 입력하세요.' : null,
-                ),
-                const SizedBox(height: 12),
-                // 내용 영역은 크기를 제한해서 키보드가 올라와도 덜 줄어들게 함
-                Flexible(
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(minHeight: 160, maxHeight: MediaQuery.of(context).size.height * 0.6),
-                    child: TextFormField(
-                      focusNode: _contentFocusNode,
-                      controller: _contentController,
-                      decoration: const InputDecoration(
-                        labelText: '내용',
-                        alignLabelWithHint: true,
-                        border: OutlineInputBorder(),
-                      ),
-                      maxLines: null,
-                      expands: false,
-                      textInputAction: TextInputAction.newline,
-                      validator: (value) => value == null || value.trim().isEmpty ? '내용을 입력하세요.' : null,
+      body: GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onTap: () {
+          FocusScope.of(context).unfocus();
+        },
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Form(
+            key: _formKey,
+            child: Scrollbar(
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    SwitchListTile.adaptive(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text('제목 사용'),
+                      value: _useTitle,
+                      onChanged: (value) {
+                        setState(() {
+                          _useTitle = value;
+                          if (!value) {
+                            _titleController.clear();
+                          }
+                        });
+                      },
                     ),
-                  ),
-                ),
+                    if (_useTitle) ...[
+                      TextFormField(
+                        focusNode: _titleFocusNode,
+                        controller: _titleController,
+                        decoration: const InputDecoration(labelText: '제목'),
+                        validator: (value) => value == null || value.trim().isEmpty ? '제목을 입력하세요.' : null,
+                      ),
+                      const SizedBox(height: 12),
+                    ],
+                    ConstrainedBox(
+                      constraints: BoxConstraints(
+                        minHeight: 160,
+                        maxHeight: MediaQuery.of(context).size.height * 0.6,
+                      ),
+                      child: TextFormField(
+                        focusNode: _contentFocusNode,
+                        controller: _contentController,
+                        decoration: const InputDecoration(
+                          labelText: '내용',
+                          alignLabelWithHint: true,
+                          border: OutlineInputBorder(),
+                        ),
+                        maxLines: null,
+                        expands: false,
+                        textInputAction: TextInputAction.newline,
+                        validator: (value) => value == null || value.trim().isEmpty ? '내용을 입력하세요.' : null,
+                      ),
+                    ),
                 const SizedBox(height: 12),
                 // 생성일 / 알림일 및 관련 버튼은 키보드가 올라왔을 때 숨김
                 if (!keyboardVisible) ...[
@@ -255,7 +289,8 @@ class _MemoEditorPageState extends State<MemoEditorPage> {
                   ),
                 ],
                 const SizedBox(height: 24),
-              ],
+                  ],
+                ),
               ),
             ),
           ),
