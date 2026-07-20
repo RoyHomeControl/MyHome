@@ -53,6 +53,7 @@ class MemoGrid extends StatelessWidget {
 
         return Draggable<Memo>(
           data: memo,
+          maxSimultaneousDrags: 1,
           feedback: Material(
             color: Colors.transparent,
             child: SizedBox(

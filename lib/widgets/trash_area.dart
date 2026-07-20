@@ -18,7 +18,10 @@ class TrashArea extends StatelessWidget {
   Widget build(BuildContext context) {
 
     return DragTarget<Memo>(
-
+      onWillAcceptWithDetails: (details) => true,
+      onAcceptWithDetails: (details) {
+        onDelete?.call(details.data);
+      },
       builder:
       (context, candidateData, rejectedData) {
 
@@ -27,13 +30,10 @@ class TrashArea extends StatelessWidget {
 
 
         return Container(
-
-          padding:
-              const EdgeInsets.all(12),
-
-
-          decoration:
-              BoxDecoration(
+          width: 56,
+          height: 56,
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
 
                 color:
                     active
@@ -46,28 +46,20 @@ class TrashArea extends StatelessWidget {
               ),
 
 
-          child:
-              Container(
-                width: 72,
-                height: 72,
-                alignment: Alignment.center,
-                child: const Icon(
-                  Icons.delete,
-                  color: Colors.white,
-                ),
+          child: SizedBox(
+            width: 56,
+            height: 56,
+            child: Center(
+              child: const Icon(
+                Icons.delete,
+                color: Colors.white,
               ),
+            ),
+          ),
         );
       },
 
 
-      onAcceptWithDetails:
-      (details) {
-
-        onDelete?.call(
-          details.data
-        );
-
-      },
     );
   }
 }

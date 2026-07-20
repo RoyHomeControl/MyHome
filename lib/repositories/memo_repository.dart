@@ -1,3 +1,5 @@
+import 'package:dio/dio.dart';
+
 import '../core/couchdb.dart';
 import '../core/const.dart';
 import '../models/memo.dart';
@@ -29,8 +31,19 @@ class MemoRepository {
 
   static Future<Memo> save(Memo memo) async {
     if (memo.id != null && memo.rev != null) {
-      final response = await CouchDb.updateDocument(memoDB, memo.id!, memo.toDocument(includeCouchFields: true));
-      return memo.copyWith(rev: response['_rev'] as String?);
+      try {
+        final response = await CouchDb.updateDocument(memoDB, memo.id!, memo.toDocument(includeCouchFields: true));
+        return memo.copyWith(rev: response['_rev'] as String?);
+      } on DioException catch (e) {
+        if (e.response?.statusCode == 409) {
+          final latestDoc = await CouchDb.getDocument(memoDB, memo.id!);
+          final latestRev = latestDoc['_rev']?.toString();
+          if (latestRev != null && latestRev != memo.rev) {
+            return save(memo.copyWith(rev: latestRev));
+          }
+        }
+        rethrow;
+      }
     }
 
     final response = await CouchDb.createDocument(memoDB, memo.toDocument(), documentId: memo.id);

@@ -54,7 +54,21 @@ class CouchDb {
     if (!document.containsKey('_rev')) {
       throw ArgumentError('updateDocument requires document["_rev"] to be set');
     }
-    final response = await _dio.put('${_dbPath(dbName)}/$id', data: document);
+
+    final response = await _dio.put(
+      '${_dbPath(dbName)}/$id',
+      data: document,
+      options: Options(validateStatus: (status) => status! < 500),
+    );
+
+    if (response.statusCode == 409) {
+      throw DioException(
+        requestOptions: response.requestOptions,
+        response: response,
+        error: 'Conflict: document revision mismatch',
+      );
+    }
+
     return _toJson(response.data);
   }
 

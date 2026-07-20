@@ -2,17 +2,24 @@ import 'package:flutter/material.dart';
 import '../models/memo.dart';
 import '../providers/memo_provider.dart';
 
+class MemoEditorResult {
+  final Memo? memo;
+  final bool deleted;
+
+  const MemoEditorResult({this.memo, this.deleted = false});
+}
+
 class MemoEditorPage extends StatefulWidget {
   final Memo? memo;
   final String ownerId;
 
   const MemoEditorPage({super.key, this.memo, required this.ownerId});
-  static Future<Memo?> open(
+  static Future<MemoEditorResult?> open(
     BuildContext context, {
     Memo? memo,
     required String ownerId,
     }) {
-    return Navigator.of(context).push(
+    return Navigator.of(context).push<MemoEditorResult>(
       MaterialPageRoute(
         builder: (_) => MemoEditorPage(
           memo: memo,
@@ -32,7 +39,6 @@ class _MemoEditorPageState extends State<MemoEditorPage> {
   DateTime? _dueAt;
   final _formKey = GlobalKey<FormState>();
   late final FocusNode _contentFocusNode;
-  bool _isContentFocused = false;
 
   @override
   void initState() {
@@ -43,11 +49,6 @@ class _MemoEditorPageState extends State<MemoEditorPage> {
     _createdAt = memo?.createdAt ?? DateTime.now();
     _dueAt = memo?.dueAt;
     _contentFocusNode = FocusNode();
-    _contentFocusNode.addListener(() {
-      setState(() {
-        _isContentFocused = _contentFocusNode.hasFocus;
-      });
-    });
   }
 
   @override
@@ -116,7 +117,7 @@ class _MemoEditorPageState extends State<MemoEditorPage> {
     try {
       final saved = await MemoProvider.saveMemo(memo);
       if (mounted) {
-        Navigator.of(context).pop(saved);
+        Navigator.of(context).pop(MemoEditorResult(memo: saved));
       }
     } catch (e) {
       if (mounted) {
@@ -136,7 +137,7 @@ class _MemoEditorPageState extends State<MemoEditorPage> {
     try {
       await MemoProvider.deleteMemo(widget.memo!);
       if (mounted) {
-        Navigator.of(context).pop(null);
+        Navigator.of(context).pop(const MemoEditorResult(deleted: true));
       }
     } catch (e) {
       if (mounted) {
@@ -150,6 +151,7 @@ class _MemoEditorPageState extends State<MemoEditorPage> {
   @override
   Widget build(BuildContext context) {
     final isEditing = widget.memo != null;
+    final keyboardVisible = MediaQuery.of(context).viewInsets.bottom > 0;
     return Scaffold(
       appBar: AppBar(
         title: Text(isEditing ? '메모 수정' : '메모 추가'),
@@ -197,8 +199,8 @@ class _MemoEditorPageState extends State<MemoEditorPage> {
                   ),
                 ),
                 const SizedBox(height: 12),
-                // 생성일 / 알림일 및 관련 버튼은 내용 포커스 시 숨김
-                if (!_isContentFocused) ...[
+                // 생성일 / 알림일 및 관련 버튼은 키보드가 올라왔을 때 숨김
+                if (!keyboardVisible) ...[
                   Row(
                     children: [
                       Expanded(

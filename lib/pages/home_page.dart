@@ -67,8 +67,11 @@ class _HomePageState extends State<HomePage> {
                   ownerId: provider.username!,
                 );
 
-                if (result != null && context.mounted) {
-                  context.read<HomeProvider>().addOrUpdateMemo(result);
+                if (!context.mounted) return;
+                if (result?.deleted == true) {
+                  await context.read<HomeProvider>().deleteMemo(memo);
+                } else if (result?.memo != null) {
+                  await context.read<HomeProvider>().addOrUpdateMemo(result!.memo!);
                 }
               },
             ),
@@ -76,10 +79,14 @@ class _HomePageState extends State<HomePage> {
           Positioned(
             left: 16,
             bottom: 16,
-            child: TrashArea(
-              onDelete: (memo) {
-                return context.read<HomeProvider>().deleteMemo(memo);
-              },
+            child: SizedBox(
+              width: 56,
+              height: 56,
+              child: TrashArea(
+                onDelete: (memo) {
+                  return context.read<HomeProvider>().deleteMemo(memo);
+                },
+              ),
             ),
           ),
         ],
@@ -92,8 +99,9 @@ class _HomePageState extends State<HomePage> {
             ownerId: provider.username!,
           );
 
-          if (result != null && context.mounted) {
-            context.read<HomeProvider>().addOrUpdateMemo(result);
+          if (!context.mounted) return;
+          if (result?.memo != null) {
+            await context.read<HomeProvider>().addOrUpdateMemo(result!.memo!);
           }
         },
         child: const Icon(Icons.add),
