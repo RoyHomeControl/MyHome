@@ -2,15 +2,31 @@ import 'package:flutter/material.dart';
 import 'package:myhome/pages/memo_editor_page.dart';
 import 'package:provider/provider.dart';
 
+import '../core/update_service.dart';
 import '../providers/home_provider.dart';
 import '../widgets/memo_grid.dart';
 import '../widgets/trash_area.dart';
 import 'login_page.dart';
 
-class HomePage extends StatelessWidget {
-
+class HomePage extends StatefulWidget {
   const HomePage({super.key});
 
+  @override
+  State<HomePage> createState() => _HomePageState();
+}
+
+class _HomePageState extends State<HomePage> {
+  final _updateService = UpdateService();
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _updateService.runUpdateFlow(context);
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -41,47 +57,46 @@ class HomePage extends StatelessWidget {
 
       body: Stack(
         children: [
-          MemoGrid(
-            memos: provider.memos,
-            onTap: (memo) async {
-              final result = await MemoEditorPage.open(
-                context,
-                memo: memo,
-                ownerId: provider.username!,
-              );
+          Scrollbar(
+            child: MemoGrid(
+              memos: provider.memos,
+              onTap: (memo) async {
+                final result = await MemoEditorPage.open(
+                  context,
+                  memo: memo,
+                  ownerId: provider.username!,
+                );
 
-              if (result != null && context.mounted) {
-                context.read<HomeProvider>().addOrUpdateMemo(result);
-              }
-            },
+                if (result != null && context.mounted) {
+                  context.read<HomeProvider>().addOrUpdateMemo(result);
+                }
+              },
+            ),
+          ),
+          Positioned(
+            left: 16,
+            bottom: 16,
+            child: TrashArea(
+              onDelete: (memo) {
+                return context.read<HomeProvider>().deleteMemo(memo);
+              },
+            ),
           ),
         ],
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
-      floatingActionButton: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          TrashArea(
-            onDelete: (memo) {
-              return context.read<HomeProvider>().deleteMemo(memo);
-            },
-          ),
-          const SizedBox(height: 12),
-          FloatingActionButton(
-            onPressed: () async {
-              final result = await MemoEditorPage.open(
-                context,
-                ownerId: provider.username!,
-              );
+      floatingActionButton: FloatingActionButton(
+        onPressed: () async {
+          final result = await MemoEditorPage.open(
+            context,
+            ownerId: provider.username!,
+          );
 
-              if (result != null && context.mounted) {
-                context.read<HomeProvider>().addOrUpdateMemo(result);
-              }
-            },
-            child: const Icon(Icons.add),
-          ),
-        ],
+          if (result != null && context.mounted) {
+            context.read<HomeProvider>().addOrUpdateMemo(result);
+          }
+        },
+        child: const Icon(Icons.add),
       ),
     );
   }

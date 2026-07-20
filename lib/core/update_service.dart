@@ -7,7 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_app_installer/flutter_app_installer.dart';
 import 'package:path_provider/path_provider.dart';
 
-import '../const.dart';
+import 'const.dart';
 
 class UpdateMetadata {
   final String downloadUrl;

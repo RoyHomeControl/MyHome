@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/memo.dart';
+import '../providers/memo_provider.dart';
 
 class MemoEditorPage extends StatefulWidget {
   final Memo? memo;
@@ -112,8 +113,37 @@ class _MemoEditorPageState extends State<MemoEditorPage> {
       dueAt: _dueAt,
     );
 
-    if (mounted) {
-      Navigator.of(context).pop(memo);
+    try {
+      final saved = await MemoProvider.saveMemo(memo);
+      if (mounted) {
+        Navigator.of(context).pop(saved);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('저장에 실패했습니다: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _deleteMemo() async {
+    if (widget.memo == null) {
+      if (mounted) Navigator.of(context).pop();
+      return;
+    }
+
+    try {
+      await MemoProvider.deleteMemo(widget.memo!);
+      if (mounted) {
+        Navigator.of(context).pop(null);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('삭제에 실패했습니다: $e')),
+        );
+      }
     }
   }
 
@@ -124,12 +154,10 @@ class _MemoEditorPageState extends State<MemoEditorPage> {
       appBar: AppBar(
         title: Text(isEditing ? '메모 수정' : '메모 추가'),
         actions: [
-          TextButton(
-            onPressed: _saveMemo,
-            child: const Text(
-              '저장',
-              style: TextStyle(color: Colors.white),
-            ),
+          IconButton(
+            tooltip: '삭제',
+            onPressed: _deleteMemo,
+            icon: const Icon(Icons.delete_outline),
           ),
         ],
       ),
@@ -137,8 +165,9 @@ class _MemoEditorPageState extends State<MemoEditorPage> {
         padding: const EdgeInsets.all(16),
         child: Form(
           key: _formKey,
-          child: SingleChildScrollView(
-            child: Column(
+          child: Scrollbar(
+            child: SingleChildScrollView(
+              child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 // 제목은 항상 보이도록 둠
@@ -213,9 +242,15 @@ class _MemoEditorPageState extends State<MemoEditorPage> {
                 ],
                 const SizedBox(height: 24),
               ],
+              ),
             ),
           ),
         ),
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _saveMemo,
+        icon: const Icon(Icons.save),
+        label: const Text('저장'),
       ),
     );
   }
