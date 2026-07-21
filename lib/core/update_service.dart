@@ -8,6 +8,7 @@ import 'package:flutter_app_installer/flutter_app_installer.dart';
 import 'package:path_provider/path_provider.dart';
 
 import 'const.dart';
+import 'secrets.dart';
 
 class UpdateMetadata {
   final String downloadUrl;
@@ -91,6 +92,7 @@ class UpdateService {
   }
 
   Future<void> runUpdateFlow(BuildContext context) async {
+    if (isDev) return;
     try {
       if (!await checkServer()) {
         await _showAlert(context, '서버 오류', '서버 상태가 정상적이지 않습니다.');

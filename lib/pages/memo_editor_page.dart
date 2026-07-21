@@ -125,11 +125,11 @@ class _MemoEditorPageState extends State<MemoEditorPage> {
 
     try {
       final saved = await MemoProvider.saveMemo(memo);
-      if (saved.dueAt != null) {
-        await NotificationService.instance.scheduleMemoNotification(saved);
-      } else {
-        await NotificationService.instance.cancelMemoNotification(saved);
-      }
+      // if (saved.dueAt != null) {
+      //   await NotificationService.instance.scheduleMemoNotification(saved);
+      // } else {
+      //   await NotificationService.instance.cancelMemoNotification(saved);
+      // }
       if (mounted) {
         Navigator.of(context).pop(MemoEditorResult(memo: saved));
       }
@@ -155,7 +155,7 @@ class _MemoEditorPageState extends State<MemoEditorPage> {
     });
 
     try {
-      await NotificationService.instance.cancelMemoNotification(widget.memo!);
+      // await NotificationService.instance.cancelMemoNotification(widget.memo!);
       await MemoProvider.deleteMemo(widget.memo!);
       if (mounted) {
         Navigator.of(context).pop(const MemoEditorResult(deleted: true));

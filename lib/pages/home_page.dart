@@ -17,6 +17,10 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   final _updateService = UpdateService();
+
+  Rect? _trashRect;
+  final GlobalKey trashKey = GlobalKey();
+  bool _trashActive = false;
   Rect? _dragRect;
 
   @override
@@ -50,6 +54,22 @@ class _HomePageState extends State<HomePage> {
     }
 
 
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+
+      final box =
+          trashKey.currentContext?.findRenderObject()
+              as RenderBox?;
+
+      if(box!=null){
+
+          _trashRect =
+              box.localToGlobal(Offset.zero)
+              & box.size;
+      }
+
+    });
+
+
     return Scaffold(
 
       appBar: AppBar(
@@ -61,10 +81,20 @@ class _HomePageState extends State<HomePage> {
           Scrollbar(
             child: MemoGrid(
               memos: provider.memos,
-              onDragRectChanged: (rect) {
+              trashRect: _trashRect,
+              onDragRectChanged: (rect) async {
                 setState(() {
                   _dragRect = rect;
                 });
+              },
+
+              onTrashHoverChanged: (active) {
+                setState(() {
+                  _trashActive=active;
+                });
+              },
+              onDeleteRequest: (memo) {
+                return context.read<HomeProvider>().deleteMemo(memo);
               },
               onTap: (memo) async {
                 final result = await MemoEditorPage.open(
@@ -89,10 +119,8 @@ class _HomePageState extends State<HomePage> {
               width: 56,
               height: 56,
               child: TrashArea(
-                dragRect: _dragRect,
-                onDelete: (memo) {
-                  return context.read<HomeProvider>().deleteMemo(memo);
-                },
+                key: trashKey,
+                active: _trashActive,
               ),
             ),
           ),

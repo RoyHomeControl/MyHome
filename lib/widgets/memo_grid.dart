@@ -2,26 +2,43 @@ import 'package:flutter/material.dart';
 
 import '../models/memo.dart';
 
+class MemoCardSize {
+  static const width = 170.0;
+  static const height = 180.0;
+}
 
-class MemoGrid extends StatelessWidget {
+class MemoGrid extends StatefulWidget {
 
   final List<Memo> memos;
-
   final Function(Memo memo)? onTap;
-  final void Function(Rect)? onDragRectChanged;
+  final Rect? trashRect;
+  final ValueChanged<bool>? onTrashHoverChanged;
+  final Future<void> Function(Memo)? onDeleteRequest;
+  final Future<void> Function(Rect)? onDragUpdate;
+  final Future<void> Function(Rect)? onDragRectChanged;
 
   const MemoGrid({
     super.key,
     required this.memos,
     this.onTap,
+    this.onTrashHoverChanged,
+    this.onDeleteRequest,
+    this.trashRect,
+    this.onDragUpdate,
     this.onDragRectChanged,
   });
+  
+  @override
+  State<MemoGrid>  createState() => _MemoGridState();
+}
 
+class _MemoGridState extends State<MemoGrid> {
+  Rect? currentRect;
 
   @override
   Widget build(BuildContext context) {
 
-    if (memos.isEmpty) {
+    if (widget.memos.isEmpty) {
       return const Center(
         child: Text(
           '메모가 없습니다.\n+ 버튼을 눌러 메모를 추가하세요.',
@@ -36,7 +53,7 @@ class MemoGrid extends StatelessWidget {
 
       padding: const EdgeInsets.all(12),
 
-      itemCount: memos.length,
+      itemCount: widget.memos.length,
 
       gridDelegate:
           const SliverGridDelegateWithFixedCrossAxisCount(
@@ -49,24 +66,46 @@ class MemoGrid extends StatelessWidget {
 
       itemBuilder: (context, index) {
 
-        final memo = memos[index];
-
+        final memo = widget.memos[index];
 
         return Draggable<Memo>(
           data: memo,
           maxSimultaneousDrags: 1,
           onDragUpdate: (details) {
-            const cardSize = Size(160, 180);
-            final rect = Rect.fromCenter(center: details.globalPosition, width: cardSize.width, height: cardSize.height);
-            onDragRectChanged?.call(rect);
+            currentRect = Rect.fromCenter(
+              center: details.globalPosition,
+              width: MemoCardSize.width,
+              height: MemoCardSize.height,
+            );
+
+            widget.onDragRectChanged?.call(currentRect!);
+
+            final active =
+                widget.trashRect != null &&
+                widget.trashRect!.overlaps(currentRect!);
+
+            widget.onTrashHoverChanged?.call(active);
           },
-          onDragEnd: (_) {
-            onDragRectChanged?.call(Rect.zero);
+          onDragEnd: (_) async {
+
+            if (currentRect != null &&
+                widget.trashRect != null &&
+                widget.trashRect!.overlaps(currentRect!)) {
+
+              await widget.onDeleteRequest?.call(memo);
+
+            }
+
+            widget.onTrashHoverChanged?.call(false);
+
+            widget.onDragRectChanged?.call(Rect.zero);
+
           },
           feedback: Material(
             color: Colors.transparent,
             child: SizedBox(
-              width: 170,
+              width: MemoCardSize.width,
+              height: MemoCardSize.height,
               child: _MemoCard(memo: memo),
             ),
           ),
@@ -80,7 +119,7 @@ class MemoGrid extends StatelessWidget {
                 BorderRadius.circular(16),
 
             onTap: () {
-              onTap?.call(memo);
+              widget.onTap?.call(memo);
             },
 
 
