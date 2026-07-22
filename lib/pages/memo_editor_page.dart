@@ -123,22 +123,23 @@ class _MemoEditorPageState extends State<MemoEditorPage> {
       dueAt: _dueAt,
     );
 
-    try {
       final saved = await MemoProvider.saveMemo(memo);
-      // if (saved.dueAt != null) {
-      //   await NotificationService.instance.scheduleMemoNotification(saved);
-      // } else {
-      //   await NotificationService.instance.cancelMemoNotification(saved);
-      // }
-      if (mounted) {
-        Navigator.of(context).pop(MemoEditorResult(memo: saved));
+    try {
+      if (saved.dueAt != null) {
+        await NotificationService.instance.scheduleMemoNotification(saved);
+      } else {
+        await NotificationService.instance.cancelMemoNotification(saved);
       }
-    } catch (e) {
+    } catch (e, st) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('저장에 실패했습니다: $e')),
+          SnackBar(content: Text('알림 등록에 실패했습니다: $e')),
         );
+        debugPrint("$st");
       }
+    }
+    if (mounted) {
+      Navigator.of(context).pop(MemoEditorResult(memo: saved));
     }
   }
 
@@ -154,12 +155,9 @@ class _MemoEditorPageState extends State<MemoEditorPage> {
       _isDeleting = true;
     });
 
+    await MemoProvider.deleteMemo(widget.memo!);
     try {
-      // await NotificationService.instance.cancelMemoNotification(widget.memo!);
-      await MemoProvider.deleteMemo(widget.memo!);
-      if (mounted) {
-        Navigator.of(context).pop(const MemoEditorResult(deleted: true));
-      }
+      await NotificationService.instance.cancelMemoNotification(widget.memo!);
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -171,6 +169,10 @@ class _MemoEditorPageState extends State<MemoEditorPage> {
           _isDeleting = false;
         });
       }
+    }
+
+    if (mounted) {
+      Navigator.of(context).pop(const MemoEditorResult(deleted: true));
     }
   }
 

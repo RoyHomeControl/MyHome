@@ -42,12 +42,14 @@ class NotificationService {
   Future<void> rescheduleFromMemos(List<Memo> memos) async {
     await cancelAll();
     for (final memo in memos) {
-      unawaited(scheduleMemoNotification(memo));
+      await scheduleMemoNotification(memo);
     }
   }
 
   Future<void> scheduleMemoNotification(Memo memo) async {
     if (memo.id == null || memo.dueAt == null) return;
+
+    await cancelMemoNotification(memo);
 
     final now = DateTime.now();
     if (memo.dueAt!.isBefore(now)) return;
@@ -58,7 +60,7 @@ class NotificationService {
     final scheduledDate = tz.TZDateTime.from(memo.dueAt!, tz.local);
 
     await _plugin.zonedSchedule(
-      memo.id!.hashCode,
+      notificationId(memo.id!),
       title,
       body,
       scheduledDate,
@@ -79,10 +81,14 @@ class NotificationService {
 
   Future<void> cancelMemoNotification(Memo memo) async {
     if (memo.id == null) return;
-    await _plugin.cancel(memo.id!.hashCode);
+    await _plugin.cancel(notificationId(memo.id!));
   }
 
   Future<void> cancelAll() async {
     await _plugin.cancelAll();
+  }
+
+  int notificationId(String id) {
+    return id.codeUnits.fold(0, (a, b) => (a * 31 + b) & 0x7fffffff);
   }
 }
